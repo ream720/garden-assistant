@@ -1,4 +1,8 @@
-import type { Activity, ActivityFilters, ActivityType } from '../types/activity';
+import type {
+  Activity,
+  ActivityFilters,
+  ActivityType,
+} from '../types/activity';
 import type { Note } from '../types/note';
 import type { Task } from '../types';
 import type { Plant } from '../types';
@@ -24,9 +28,13 @@ export class ActivityService {
     const activities: Activity[] = [];
 
     // Generate note activities
-    notes.forEach(note => {
-      const plant = note.plantId ? plants.find(p => p.id === note.plantId) : undefined;
-      const space = note.spaceId ? spaces.find(s => s.id === note.spaceId) : undefined;
+    notes.forEach((note) => {
+      const plant = note.plantId
+        ? plants.find((p) => p.id === note.plantId)
+        : undefined;
+      const space = note.spaceId
+        ? spaces.find((s) => s.id === note.spaceId)
+        : undefined;
 
       activities.push({
         id: `note-${note.id}`,
@@ -48,10 +56,14 @@ export class ActivityService {
 
     // Generate task completion activities
     tasks
-      .filter(task => task.status === 'completed' && task.completedAt)
-      .forEach(task => {
-        const plant = task.plantId ? plants.find(p => p.id === task.plantId) : undefined;
-        const space = task.spaceId ? spaces.find(s => s.id === task.spaceId) : undefined;
+      .filter((task) => task.status === 'completed' && task.completedAt)
+      .forEach((task) => {
+        const plant = task.plantId
+          ? plants.find((p) => p.id === task.plantId)
+          : undefined;
+        const space = task.spaceId
+          ? spaces.find((s) => s.id === task.spaceId)
+          : undefined;
 
         activities.push({
           id: `task-${task.id}`,
@@ -71,8 +83,10 @@ export class ActivityService {
       });
 
     // Generate plant added activities
-    plants.forEach(plant => {
-      const space = plant.spaceId ? spaces.find(s => s.id === plant.spaceId) : undefined;
+    plants.forEach((plant) => {
+      const space = plant.spaceId
+        ? spaces.find((s) => s.id === plant.spaceId)
+        : undefined;
 
       activities.push({
         id: `plant-added-${plant.id}`,
@@ -109,7 +123,7 @@ export class ActivityService {
     });
 
     // Generate space creation activities
-    spaces.forEach(space => {
+    spaces.forEach((space) => {
       activities.push({
         id: `space-${space.id}`,
         userId: space.userId,
@@ -131,11 +145,13 @@ export class ActivityService {
     let filtered = activities;
 
     if (filters?.types && filters.types.length > 0) {
-      filtered = filtered.filter(activity => filters.types!.includes(activity.type));
+      filtered = filtered.filter((activity) =>
+        filters.types!.includes(activity.type)
+      );
     }
 
     if (filters?.publicOnly) {
-      filtered = filtered.filter(activity => activity.isPublic);
+      filtered = filtered.filter((activity) => activity.isPublic);
     }
 
     if (filters?.limit) {
@@ -143,7 +159,7 @@ export class ActivityService {
     }
 
     if (filters?.plantId) {
-      filtered = filtered.filter(activity => {
+      filtered = filtered.filter((activity) => {
         if (activity.type === 'note_created') {
           return activity.data.plantId === filters.plantId;
         }
@@ -162,11 +178,15 @@ export class ActivityService {
     }
 
     if (filters?.spaceId) {
-      filtered = filtered.filter(activity => {
+      filtered = filtered.filter((activity) => {
         if (activity.type === 'space_created') {
           return activity.data.spaceId === filters.spaceId;
         }
-        if (activity.type === 'note_created' || activity.type === 'task_completed' || activity.type === 'plant_added') {
+        if (
+          activity.type === 'note_created' ||
+          activity.type === 'task_completed' ||
+          activity.type === 'plant_added'
+        ) {
           return activity.data.spaceId === filters.spaceId;
         }
         return false;
@@ -178,17 +198,18 @@ export class ActivityService {
 
   /**
    * Format activity description for display
+   * @todo: brainstorm if there is a better way to determine "a" or "an"
    */
   formatActivityDescription(activity: Activity): string {
     switch (activity.type) {
       case 'note_created':
         if (activity.data.plantName) {
-          return `Added a ${activity.data.category} note for ${activity.data.plantName}`;
+          return `Added a(n) ${activity.data.category} note for ${activity.data.plantName}`;
         }
         if (activity.data.spaceName) {
-          return `Added a ${activity.data.category} note for ${activity.data.spaceName}`;
+          return `Added a(n) ${activity.data.category} note for ${activity.data.spaceName}`;
         }
-        return `Added a ${activity.data.category} note`;
+        return `Added a(n) ${activity.data.category} note`;
 
       case 'task_completed':
         return `Completed task: ${activity.data.title}`;

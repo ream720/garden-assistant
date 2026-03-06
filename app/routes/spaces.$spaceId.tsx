@@ -1,51 +1,102 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Settings, StickyNote } from 'lucide-react';
+import { ArrowLeft, Settings, StickyNote, Plus, Sprout, CheckSquare } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { PlantList } from '../components/plants';
+import { PlantForm } from '../components/plants/PlantForm';
 import { SpaceForm } from '../components/spaces/SpaceForm';
 import { NoteList } from '../components/notes/NoteList';
+import { NoteForm } from '../components/notes/NoteForm';
+import { TaskForm } from '../components/tasks/TaskForm';
+import { TaskCard } from '../components/tasks/TaskCard';
+import { TaskCompletionDialog } from '../components/tasks/TaskCompletionDialog';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 import { ProtectedRoute } from '../components/routing/ProtectedRoute';
 import { useAuthStore } from '../stores/authStore';
 import { useSpaceStore } from '../stores/spaceStore';
-import type { GrowSpace } from '../lib/types';
+import { usePlantStore } from '../stores/plantStore';
+import { useTaskStore } from '../stores/taskStore';
+import { useNoteStore } from '../stores/noteStore';
+import { useToast } from '../components/ui/use-toast';
+import type { Task } from '../lib/types';
+import type { NoteCategory } from '../lib/types/note';
 
 export function meta({ params }: { params: { spaceId: string } }) {
   return [
-    { title: `Space Details - Grospace` },
-    { name: "description", content: "View and manage plants in your grow space" },
+    { title: 'Space Details - Grospace' },
+    { name: 'description', content: 'View and manage plants in your grow space' },
   ];
 }
 
 const spaceTypeLabels = {
   'indoor-tent': 'Indoor Tent',
   'outdoor-bed': 'Outdoor Bed',
-  'greenhouse': 'Greenhouse',
-  'hydroponic': 'Hydroponic',
-  'container': 'Container',
+  greenhouse: 'Greenhouse',
+  hydroponic: 'Hydroponic',
+  container: 'Container',
 };
 
 function SpaceDetailContent() {
   const { spaceId } = useParams();
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showAddPlantDialog, setShowAddPlantDialog] = useState(false);
+  const [showAddNoteDialog, setShowAddNoteDialog] = useState(false);
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [completingTask, setCompletingTask] = useState<Task | null>(null);
+  const [isCreatingNote, setIsCreatingNote] = useState(false);
+
+  const { toast } = useToast();
   const { user } = useAuthStore();
   const { spaces, loading, error, loadSpaces, updateSpace } = useSpaceStore();
+  const { plants, loadPlants } = usePlantStore();
+  const {
+    tasks,
+    loading: tasksLoading,
+    loadTasks,
+    createTask,
+    updateTask,
+    completeTask,
+    deleteTask,
+  } = useTaskStore();
+  const { createNote } = useNoteStore();
 
   useEffect(() => {
-    if (user) {
-      loadSpaces();
-    }
-  }, [user, loadSpaces]);
+    if (!user) return;
 
-  const space = spaces.find(s => s.id === spaceId);
+    loadSpaces();
+    loadPlants(spaceId);
+    loadTasks();
+  }, [user, spaceId, loadSpaces, loadPlants, loadTasks]);
+
+  const space = spaces.find((s) => s.id === spaceId);
+
+  const spaceTasks = useMemo(() => {
+    if (!space) return [];
+
+    return tasks
+      .filter((task) => task.spaceId === space.id)
+      .sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === 'pending' ? -1 : 1;
+        }
+
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+  }, [tasks, space]);
 
   const handleUpdateSpace = async (data: { name: string; type: any; description?: string }) => {
     if (!space) return;
@@ -58,12 +109,150 @@ function SpaceDetailContent() {
     }
   };
 
+  const handleCreateNoteInSpace = async (data: {
+    content: string;
+    category: NoteCategory;
+    plantId?: string;
+    spaceId?: string;
+    timestamp?: Date;
+    photos: File[];
+  }) => {
+    if (!user) return;
+
+    setIsCreatingNote(true);
+    try {
+      await createNote(
+        {
+          content: data.content,
+          category: data.category,
+          plantId: data.plantId,
+          spaceId: data.spaceId,
+          timestamp: data.timestamp,
+          photos: data.photos,
+        },
+        user.uid
+      );
+
+      setShowAddNoteDialog(false);
+      toast({
+        title: 'Success',
+        description: 'Note created successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create note',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingNote(false);
+    }
+  };
+
+  const openCreateTaskDialog = () => {
+    setEditingTask(null);
+    setShowTaskDialog(true);
+  };
+
+  const openEditTaskDialog = (task: Task) => {
+    setEditingTask(task);
+    setShowTaskDialog(true);
+  };
+
+  const handleTaskFormSubmit = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, taskData);
+        toast({
+          title: 'Success',
+          description: 'Task updated successfully',
+        });
+      } else {
+        await createTask(taskData);
+        toast({
+          title: 'Success',
+          description: 'Task created successfully',
+        });
+      }
+
+      setShowTaskDialog(false);
+      setEditingTask(null);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save task',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCompleteTask = (taskId: string) => {
+    const task = spaceTasks.find((item) => item.id === taskId);
+    if (task) {
+      setCompletingTask(task);
+    }
+  };
+
+  const handleTaskCompletion = async (
+    taskId: string,
+    noteData?: {
+      content: string;
+      category: NoteCategory;
+      plantId?: string;
+      spaceId?: string;
+    }
+  ) => {
+    try {
+      await completeTask(taskId);
+
+      if (noteData && user) {
+        await createNote(
+          {
+            content: noteData.content,
+            category: noteData.category,
+            plantId: noteData.plantId,
+            spaceId: noteData.spaceId,
+            timestamp: new Date(),
+          },
+          user.uid
+        );
+      }
+
+      toast({
+        title: 'Success',
+        description: noteData ? 'Task completed and note added successfully' : 'Task completed successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to complete task',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      toast({
+        title: 'Success',
+        description: 'Task deleted successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete task',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading && !space) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
             <p className="text-muted-foreground">Loading space...</p>
           </div>
         </div>
@@ -75,10 +264,8 @@ function SpaceDetailContent() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <p className="text-destructive mb-4">{error}</p>
-          <Button onClick={() => loadSpaces()}>
-            Try Again
-          </Button>
+          <p className="mb-4 text-destructive">{error}</p>
+          <Button onClick={() => loadSpaces()}>Try Again</Button>
         </div>
       </div>
     );
@@ -88,9 +275,9 @@ function SpaceDetailContent() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Space Not Found</h2>
-          <p className="text-muted-foreground mb-4">
-            The space you're looking for doesn't exist or you don't have access to it.
+          <h2 className="mb-4 text-2xl font-bold">Space Not Found</h2>
+          <p className="mb-4 text-muted-foreground">
+            The space you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
           </p>
           <Link to="/spaces">
             <Button>
@@ -104,12 +291,12 @@ function SpaceDetailContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto max-w-5xl px-4 py-8">
       {/* Navigation */}
       <div className="mb-6">
         <Link to="/spaces" className="inline-block">
           <Button variant="ghost" size="sm" className="-ml-3 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Spaces
           </Button>
         </Link>
@@ -117,39 +304,62 @@ function SpaceDetailContent() {
 
       {/* Header Content */}
       <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">{space.name}</h1>
+            <h1 className="mb-2 text-3xl font-bold tracking-tight">{space.name}</h1>
 
             <div className="flex items-center gap-3 text-muted-foreground">
               <Badge variant="secondary" className="font-medium">
                 {spaceTypeLabels[space.type]}
               </Badge>
-              <span className="text-sm">•</span>
+              <span className="text-sm">|</span>
               <span className="text-sm font-medium">
                 {space.plantCount} {space.plantCount === 1 ? 'plant' : 'plants'}
               </span>
             </div>
           </div>
 
-          <Button onClick={() => setShowEditDialog(true)} variant="outline">
-            <Settings className="mr-2 h-4 w-4" />
-            Edit Space
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setShowAddPlantDialog(true)}>
+                  <Sprout className="mr-2 h-4 w-4" />
+                  Add Plant
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={openCreateTaskDialog}>
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  Add Task
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setShowAddNoteDialog(true)}>
+                  <StickyNote className="mr-2 h-4 w-4" />
+                  Add Note
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button onClick={() => setShowEditDialog(true)} variant="outline">
+              <Settings className="mr-2 h-4 w-4" />
+              Edit Space
+            </Button>
+          </div>
         </div>
 
         {space.description && (
           <div className="max-w-2xl">
-            <p className="text-muted-foreground leading-relaxed">
-              {space.description}
-            </p>
+            <p className="leading-relaxed text-muted-foreground">{space.description}</p>
           </div>
         )}
       </div>
 
       {/* Space Details */}
       {(space.dimensions || space.environment) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2">
           {space.dimensions && (
             <Card>
               <CardHeader className="pb-3">
@@ -158,17 +368,23 @@ function SpaceDetailContent() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground block mb-1">Length</span>
-                    <span className="font-medium">{space.dimensions.length} {space.dimensions.unit}</span>
+                    <span className="mb-1 block text-muted-foreground">Length</span>
+                    <span className="font-medium">
+                      {space.dimensions.length} {space.dimensions.unit}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block mb-1">Width</span>
-                    <span className="font-medium">{space.dimensions.width} {space.dimensions.unit}</span>
+                    <span className="mb-1 block text-muted-foreground">Width</span>
+                    <span className="font-medium">
+                      {space.dimensions.width} {space.dimensions.unit}
+                    </span>
                   </div>
                   {space.dimensions.height && (
                     <div>
-                      <span className="text-muted-foreground block mb-1">Height</span>
-                      <span className="font-medium">{space.dimensions.height} {space.dimensions.unit}</span>
+                      <span className="mb-1 block text-muted-foreground">Height</span>
+                      <span className="font-medium">
+                        {space.dimensions.height} {space.dimensions.unit}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -185,22 +401,24 @@ function SpaceDetailContent() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   {space.environment.temperature && (
                     <div>
-                      <span className="text-muted-foreground block mb-1">Temperature</span>
+                      <span className="mb-1 block text-muted-foreground">Temperature</span>
                       <span className="font-medium">
-                        {space.environment.temperature.min}° - {space.environment.temperature.max}°
+                        {space.environment.temperature.min} - {space.environment.temperature.max}
                         {space.environment.temperature.unit === 'celsius' ? 'C' : 'F'}
                       </span>
                     </div>
                   )}
                   {space.environment.humidity && (
                     <div>
-                      <span className="text-muted-foreground block mb-1">Humidity</span>
-                      <span className="font-medium">{space.environment.humidity.min}% - {space.environment.humidity.max}%</span>
+                      <span className="mb-1 block text-muted-foreground">Humidity</span>
+                      <span className="font-medium">
+                        {space.environment.humidity.min}% - {space.environment.humidity.max}%
+                      </span>
                     </div>
                   )}
                   {space.environment.lightSchedule && (
                     <div className="col-span-2">
-                      <span className="text-muted-foreground block mb-1">Light Schedule</span>
+                      <span className="mb-1 block text-muted-foreground">Light Schedule</span>
                       <span className="font-medium">
                         {space.environment.lightSchedule.hoursOn}h on / {space.environment.lightSchedule.hoursOff}h off
                       </span>
@@ -213,25 +431,151 @@ function SpaceDetailContent() {
         </div>
       )}
 
+      {/* Tasks in this space */}
+      <div className="mb-10">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-xl font-semibold">
+            Tasks in this Space
+            <Badge variant="outline" className="ml-2 font-normal">
+              {spaceTasks.length}
+            </Badge>
+          </h2>
+          <Button onClick={openCreateTaskDialog} size="sm">
+            <CheckSquare className="mr-2 h-4 w-4" />
+            Add Task
+          </Button>
+        </div>
+
+        {tasksLoading && spaceTasks.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground">Loading tasks...</p>
+            </CardContent>
+          </Card>
+        ) : spaceTasks.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="mb-4 text-muted-foreground">No tasks attached to this space yet.</p>
+              <Button onClick={openCreateTaskDialog}>
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Create First Space Task
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {spaceTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                spaces={spaces}
+                plants={plants}
+                onComplete={handleCompleteTask}
+                onEdit={openEditTaskDialog}
+                onDelete={handleDeleteTask}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Plants in this space */}
       <div className="mb-10">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+        <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
           Plants in this Space
           <Badge variant="outline" className="ml-2 font-normal">
             {space.plantCount}
           </Badge>
         </h2>
-        <PlantList spaceId={space.id} spaces={spaces} />
+        <PlantList spaceId={space.id} spaces={spaces} showAddButton={false} />
       </div>
 
-      {/* Notes & Observations */}
+      {/* Notes and Observations */}
       <div className="mb-8">
         <NoteList
           spaceId={space.id}
-          title="Space Notes & Observations"
-          showCreateButton={true}
+          title="Space Notes and Observations"
+          showCreateButton={false}
         />
       </div>
+
+      {/* Add/Edit Task Dialog */}
+      <Dialog
+        open={showTaskDialog}
+        onOpenChange={(open) => {
+          setShowTaskDialog(open);
+          if (!open) {
+            setEditingTask(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTask ? 'Edit Task' : 'Create Space Task'}</DialogTitle>
+          </DialogHeader>
+          <TaskForm
+            task={editingTask || undefined}
+            spaces={spaces}
+            plants={plants}
+            initialSpaceId={space.id}
+            disableSpaceSelection={!editingTask}
+            onSubmit={handleTaskFormSubmit}
+            onCancel={() => {
+              setShowTaskDialog(false);
+              setEditingTask(null);
+            }}
+            isLoading={false}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Task Completion Dialog */}
+      <TaskCompletionDialog
+        task={completingTask}
+        spaces={spaces}
+        plants={plants}
+        open={!!completingTask}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCompletingTask(null);
+          }
+        }}
+        onComplete={handleTaskCompletion}
+      />
+
+      {/* Add Plant Dialog */}
+      <Dialog open={showAddPlantDialog} onOpenChange={setShowAddPlantDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add New Plant</DialogTitle>
+          </DialogHeader>
+          <PlantForm
+            spaces={spaces}
+            defaultSpaceId={space.id}
+            onSuccess={() => {
+              setShowAddPlantDialog(false);
+              loadSpaces();
+              loadPlants(space.id);
+            }}
+            onCancel={() => setShowAddPlantDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Note Dialog */}
+      <Dialog open={showAddNoteDialog} onOpenChange={setShowAddNoteDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Note</DialogTitle>
+          </DialogHeader>
+          <NoteForm
+            onSubmit={handleCreateNoteInSpace}
+            onCancel={() => setShowAddNoteDialog(false)}
+            initialSpaceId={space.id}
+            loading={isCreatingNote}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Space Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

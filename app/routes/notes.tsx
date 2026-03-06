@@ -5,11 +5,12 @@ import { useAuthStore } from '../stores/authStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { usePlantStore } from '../stores/plantStore';
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
+import { NotesTasksGuide } from '../components/shared/NotesTasksGuide';
 
 export function meta() {
   return [
-    { title: "Notes - Grospace" },
-    { name: "description", content: "View and manage your garden notes" },
+    { title: 'Notes - Grospace' },
+    { name: 'description', content: 'View and manage your garden notes' },
   ];
 }
 
@@ -28,7 +29,10 @@ function NotesContent() {
 
   return (
     <DashboardLayout title="Notes">
-      <NoteList />
+      <div className="space-y-6">
+        <NotesTasksGuide activeFeature="notes" />
+        <NoteList />
+      </div>
     </DashboardLayout>
   );
 }

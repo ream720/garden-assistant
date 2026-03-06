@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { StickyNote } from 'lucide-react';
+
 import { Button } from '../ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Input } from '../ui/input';
 import { PhotoUpload } from './PhotoUpload';
+import { FeatureHelpPopover } from '../shared/FeatureHelpPopover';
 import { NOTE_CATEGORIES, type NoteCategory } from '../../lib/types/note';
 import { useSpaceStore } from '../../stores/spaceStore';
 import { usePlantStore } from '../../stores/plantStore';
@@ -45,22 +48,31 @@ interface NoteFormProps {
   loading?: boolean;
 }
 
+const noteCategoryDescriptions: Record<NoteCategory, string> = {
+  observation: 'Use for everyday observations, growth changes, and context you may want to revisit later.',
+  feeding: 'Use for watering, nutrients, pH, EC, or any feeding-related update you want in the record.',
+  pruning: 'Use for pruning, trimming, training, defoliation, or other structure changes.',
+  issue: 'Use for pests, disease, deficiencies, damage, or anything that needs troubleshooting history.',
+  milestone: 'Use for major moments like germination, transplanting, flowering, or harvest progress.',
+  general: 'Use when the update matters but does not fit neatly into the other categories.',
+};
+
 const formatDateTimeLocal = (date: Date): string => {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return localDate.toISOString().slice(0, 16);
 };
 
-export function NoteForm({ 
-  onSubmit, 
-  onCancel, 
-  initialPlantId, 
+export function NoteForm({
+  onSubmit,
+  onCancel,
+  initialPlantId,
   initialSpaceId,
   initialContent = '',
   initialCategory = 'observation',
   initialTimestamp,
   showPhotoUpload = true,
   submitLabel = 'Save Note',
-  loading = false 
+  loading = false,
 }: NoteFormProps) {
   const [photos, setPhotos] = useState<File[]>([]);
   const { spaces } = useSpaceStore();
@@ -77,19 +89,16 @@ export function NoteForm({
     },
   });
 
-  // Reset form values when initial props change and handle plant-space relationship
   React.useEffect(() => {
     let effectiveSpaceId = initialSpaceId || 'none';
     const timestampValue = formatDateTimeLocal(initialTimestamp ?? new Date());
-    
-    // If we have an initialPlantId, try to get its space
+
     if (initialPlantId && initialPlantId !== 'none' && plants.length > 0) {
-      const plant = plants.find(p => p.id === initialPlantId);
-      
+      const plant = plants.find((p) => p.id === initialPlantId);
+
       if (plant && plant.spaceId && spaces.length > 0) {
-        // Verify the space exists in the spaces array
-        const spaceExists = spaces.find(s => s.id === plant.spaceId);
-        
+        const spaceExists = spaces.find((s) => s.id === plant.spaceId);
+
         if (spaceExists) {
           effectiveSpaceId = plant.spaceId;
         }
@@ -104,8 +113,6 @@ export function NoteForm({
       timestamp: timestampValue,
     });
 
-    // Ensure Select component displays the correct value by setting it again after render
-    // This handles timing issues with controlled Select components
     setTimeout(() => {
       if (effectiveSpaceId !== 'none') {
         form.setValue('spaceId', effectiveSpaceId);
@@ -124,10 +131,10 @@ export function NoteForm({
 
   const selectedPlantId = form.watch('plantId');
   const selectedSpaceId = form.watch('spaceId');
+  const selectedCategory = form.watch('category');
 
-  // Filter plants based on selected space
   const availablePlants = selectedSpaceId && selectedSpaceId !== 'none'
-    ? plants.filter(plant => plant.spaceId === selectedSpaceId)
+    ? plants.filter((plant) => plant.spaceId === selectedSpaceId)
     : plants;
 
   const handleSubmit = async (data: NoteFormData) => {
@@ -145,20 +152,18 @@ export function NoteForm({
     }
   };
 
-  // When space changes, clear plant selection if plant is not in the new space
   React.useEffect(() => {
     if (selectedSpaceId && selectedSpaceId !== 'none' && selectedPlantId && selectedPlantId !== 'none') {
-      const plant = plants.find(p => p.id === selectedPlantId);
+      const plant = plants.find((p) => p.id === selectedPlantId);
       if (plant && plant.spaceId !== selectedSpaceId) {
         form.setValue('plantId', 'none');
       }
     }
   }, [selectedSpaceId, selectedPlantId, plants, form]);
 
-  // When plant changes manually (not initial load), automatically set the space to that plant's space
   React.useEffect(() => {
     if (selectedPlantId && selectedPlantId !== 'none' && selectedPlantId !== initialPlantId) {
-      const plant = plants.find(p => p.id === selectedPlantId);
+      const plant = plants.find((p) => p.id === selectedPlantId);
       if (plant && plant.spaceId) {
         form.setValue('spaceId', plant.spaceId);
       }
@@ -168,7 +173,34 @@ export function NoteForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* Content */}
+        <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <StickyNote className="h-4 w-4 text-amber-700" />
+                <p className="text-sm font-semibold text-amber-950">Notes are for long-term context</p>
+              </div>
+              <p className="text-sm text-amber-900/80">
+                Use a note for observations, photo updates, issues, milestones, and other details you may want to search later.
+              </p>
+              <p className="text-sm text-amber-900/80">
+                If this is work that needs a due date or should repeat, create a task instead.
+              </p>
+            </div>
+            <FeatureHelpPopover
+              label="When to use notes"
+              title="Use notes when you are recording context"
+              description="Notes act as your searchable garden log. They are best for what happened, what you noticed, and what you want to remember."
+              items={[
+                'Add photos for visual progress, issues, or before-and-after tracking.',
+                'Attach a note to a space or a specific plant.',
+                'Backdate the entry so your timeline reflects when it really happened.',
+                'Use a task instead when you need a due date, priority, or recurrence.',
+              ]}
+            />
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="content"
@@ -177,12 +209,15 @@ export function NoteForm({
               <FormLabel>Note Content</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Enter your observation, note, or comment..."
+                  placeholder="Example: Noticed lower leaves yellowing after feeding. Added photos for comparison."
                   className="min-h-[120px] resize-none"
                   {...field}
                 />
               </FormControl>
-              <div className="text-sm text-muted-foreground text-right">
+              <p className="text-sm text-muted-foreground">
+                Keep it concise but useful. Good notes make future searching and troubleshooting easier.
+              </p>
+              <div className="text-right text-sm text-muted-foreground">
                 {field.value.length}/2000
               </div>
               <FormMessage />
@@ -190,7 +225,6 @@ export function NoteForm({
           )}
         />
 
-        {/* Category */}
         <FormField
           control={form.control}
           name="category"
@@ -211,12 +245,14 @@ export function NoteForm({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-sm text-muted-foreground">
+                {noteCategoryDescriptions[selectedCategory]}
+              </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Space Selection */}
         <FormField
           control={form.control}
           name="spaceId"
@@ -238,12 +274,14 @@ export function NoteForm({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-sm text-muted-foreground">
+                Choose a space when the note applies to the environment as a whole or multiple plants in the same area.
+              </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Plant Selection */}
         <FormField
           control={form.control}
           name="plantId"
@@ -265,12 +303,14 @@ export function NoteForm({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-sm text-muted-foreground">
+                Choose a plant when the note is specific to that plant. Selecting a plant also keeps the space association aligned.
+              </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Timestamp */}
         <FormField
           control={form.control}
           name="timestamp"
@@ -278,20 +318,22 @@ export function NoteForm({
             <FormItem>
               <FormLabel>Date & Time</FormLabel>
               <FormControl>
-                <Input
-                  type="datetime-local"
-                  {...field}
-                />
+                <Input type="datetime-local" {...field} />
               </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Adjust this if you are logging something after the fact and want the timeline to reflect when it actually happened.
+              </p>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        {/* Photo Upload */}
         {showPhotoUpload && (
           <div className="space-y-2">
             <label className="text-sm font-medium">Photos</label>
+            <p className="text-sm text-muted-foreground">
+              Notes can include photos for progress tracking, issue diagnosis, and visual history. Tasks do not support photos.
+            </p>
             <PhotoUpload
               photos={photos}
               onPhotosChange={setPhotos}
@@ -300,7 +342,6 @@ export function NoteForm({
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex justify-end space-x-2">
           <Button
             type="button"

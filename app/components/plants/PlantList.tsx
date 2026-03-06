@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Sprout } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { Search, Sprout } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import {
@@ -30,9 +31,32 @@ interface PlantListProps {
   showAddButton?: boolean;
 }
 
+type PlantStatusFilter = PlantStatus | 'active' | 'all';
+
+const parseStatusFilter = (value: string | null): PlantStatusFilter => {
+  if (!value) return 'all';
+
+  if (
+    value === 'all' ||
+    value === 'active' ||
+    value === 'seedling' ||
+    value === 'vegetative' ||
+    value === 'flowering' ||
+    value === 'harvested' ||
+    value === 'removed'
+  ) {
+    return value;
+  }
+
+  return 'all';
+};
+
 export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListProps) {
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PlantStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<PlantStatusFilter>(() =>
+    parseStatusFilter(searchParams.get('status'))
+  );
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingPlant, setEditingPlant] = useState<Plant | null>(null);
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
@@ -67,9 +91,17 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
   const displayPlants = spaceId ? getPlantsBySpace(spaceId) : plants;
 
   const filteredPlants = displayPlants.filter((plant) => {
-    const matchesSearch = plant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch =
+      plant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       plant.variety.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || plant.status === statusFilter;
+
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'active'
+          ? plant.status !== 'harvested' && plant.status !== 'removed'
+          : plant.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -128,12 +160,16 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
               className="pl-8"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as PlantStatus | 'all')}>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as PlantStatusFilter)}
+          >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
               <SelectItem value="seedling">Seedling</SelectItem>
               <SelectItem value="vegetative">Vegetative</SelectItem>
               <SelectItem value="flowering">Flowering</SelectItem>
@@ -144,7 +180,7 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
         </div>
         {showAddButton && (
           <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Sprout className="mr-2 h-4 w-4" />
             Add Plant
           </Button>
         )}
@@ -161,12 +197,11 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
               ? 'No plants match your filters.'
               : spaceId
                 ? 'No plants in this space yet.'
-                : 'No plants added yet.'
-            }
+                : 'No plants added yet.'}
           </p>
           {showAddButton && !searchTerm && statusFilter === 'all' && (
             <Button onClick={() => setShowAddDialog(true)} className="mt-2">
-              <Plus className="mr-2 h-4 w-4" />
+              <Sprout className="mr-2 h-4 w-4" />
               Add Your First Plant
             </Button>
           )}
@@ -239,3 +274,4 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
     </div>
   );
 }
+

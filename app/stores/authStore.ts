@@ -10,6 +10,7 @@ import {
   formatAuthUser
 } from '../lib/firebase/auth';
 import type { AuthUser, AuthState } from '../lib/types/auth';
+import { getFriendlyAuthErrorMessage } from '../lib/firebase/authErrors';
 
 interface AuthStore extends AuthState {
   // Additional loading states for specific operations
@@ -45,7 +46,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const user = await createUser(email, password, displayName);
       set({ user, signingUp: false });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create account';
+      const errorMessage = getFriendlyAuthErrorMessage(error, 'signUp');
       set({ error: errorMessage, signingUp: false });
       throw error;
     }
@@ -57,7 +58,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       const user = await firebaseSignIn(email, password, rememberMe);
       set({ user, signingIn: false });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in';
+      const errorMessage = getFriendlyAuthErrorMessage(error, 'signIn');
       set({ error: errorMessage, signingIn: false });
       throw error;
     }
@@ -81,7 +82,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       await firebaseResetPassword(email);
       set({ resettingPassword: false });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send reset email';
+      const errorMessage = getFriendlyAuthErrorMessage(error, 'resetPassword');
       set({ error: errorMessage, resettingPassword: false });
       throw error;
     }
@@ -167,3 +168,4 @@ export const initializeAuth = () => {
     }
   );
 };
+
