@@ -1,8 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Button } from '../ui/button';
 import { useToast } from '../ui/use-toast';
 
 import { TaskList } from './TaskList';
@@ -18,11 +16,15 @@ import { useAuthStore } from '../../stores/authStore';
 import type { Task } from '../../lib/types';
 import type { NoteCategory } from '../../lib/types/note';
 
-export function TasksPage() {
+interface TasksPageProps {
+  embedded?: boolean;
+  compactIntro?: boolean;
+}
+
+export function TasksPage({ embedded = false, compactIntro = false }: TasksPageProps) {
   const { toast } = useToast();
   const { user } = useAuthStore();
 
-  // Task store
   const {
     tasks,
     loading: tasksLoading,
@@ -32,32 +34,27 @@ export function TasksPage() {
     updateTask,
     completeTask,
     deleteTask,
-    clearError: clearTasksError
+    clearError: clearTasksError,
   } = useTaskStore();
 
-  // Space store
   const {
     spaces,
     loading: spacesLoading,
-    loadSpaces
+    loadSpaces,
   } = useSpaceStore();
 
-  // Plant store
   const {
     plants,
     loading: plantsLoading,
-    loadPlants
+    loadPlants,
   } = usePlantStore();
 
-  // Note store
   const { createNote } = useNoteStore();
 
-  // Dialog states
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
 
-  // Load data on mount
   useEffect(() => {
     if (user) {
       loadTasks();
@@ -66,7 +63,6 @@ export function TasksPage() {
     }
   }, [user, loadTasks, loadSpaces, loadPlants]);
 
-  // Show error toast
   useEffect(() => {
     if (tasksError) {
       toast({
@@ -115,7 +111,7 @@ export function TasksPage() {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = tasks.find((item) => item.id === taskId);
     if (task) {
       setCompletingTask(task);
     }
@@ -133,15 +129,17 @@ export function TasksPage() {
     try {
       await completeTask(taskId);
 
-      // Create note if provided
       if (noteData && user) {
-        await createNote({
-          content: noteData.content,
-          category: noteData.category,
-          plantId: noteData.plantId,
-          spaceId: noteData.spaceId,
-          timestamp: new Date(),
-        }, user.uid);
+        await createNote(
+          {
+            content: noteData.content,
+            category: noteData.category,
+            plantId: noteData.plantId,
+            spaceId: noteData.spaceId,
+            timestamp: new Date(),
+          },
+          user.uid
+        );
       }
 
       toast({
@@ -175,9 +173,7 @@ export function TasksPage() {
     }
   };
 
-  const handleCreateNoteFromTask = (task: Task) => {
-    // This could open a note creation dialog
-    // For now, we'll just show a toast
+  const handleCreateNoteFromTask = () => {
     toast({
       title: 'Feature Coming Soon',
       description: 'Direct note creation from tasks will be available soon',
@@ -185,9 +181,10 @@ export function TasksPage() {
   };
 
   const isLoading = tasksLoading || spacesLoading || plantsLoading;
+  const pageClassName = embedded ? 'space-y-6' : 'container mx-auto py-6 space-y-6';
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className={pageClassName}>
       <TaskList
         tasks={tasks}
         spaces={spaces}
@@ -198,9 +195,9 @@ export function TasksPage() {
         onCompleteTask={handleCompleteTask}
         onDeleteTask={handleDeleteTask}
         onCreateNote={handleCreateNoteFromTask}
+        showDescription={!compactIntro}
       />
 
-      {/* Task Form Dialog */}
       <Dialog open={showTaskForm} onOpenChange={setShowTaskForm}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -220,7 +217,6 @@ export function TasksPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Task Completion Dialog */}
       <TaskCompletionDialog
         task={completingTask}
         spaces={spaces}
@@ -232,3 +228,4 @@ export function TasksPage() {
     </div>
   );
 }
+

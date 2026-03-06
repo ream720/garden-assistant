@@ -1,31 +1,26 @@
-import type { Route } from './+types/tasks';
-import { TasksPage } from '../components/tasks/TasksPage';
-import { ProtectedRoute } from '../components/routing/ProtectedRoute';
-import { DashboardLayout } from '../components/dashboard/DashboardLayout';
-import { NotesTasksGuide } from '../components/shared/NotesTasksGuide';
+import { Navigate, useLocation } from 'react-router';
 
-export function meta({}: Route.MetaArgs) {
+import { ProtectedRoute } from '../components/routing/ProtectedRoute';
+
+export function meta() {
   return [
-    { title: 'Tasks - Grospace' },
-    { name: 'description', content: 'Manage your garden tasks and schedules' },
+    { title: 'Events - Grospace' },
+    { name: 'description', content: 'Redirecting to Events' },
   ];
 }
 
-function TasksContent() {
-  return (
-    <DashboardLayout title="Tasks">
-      <div className="space-y-6">
-        <NotesTasksGuide activeFeature="tasks" />
-        <TasksPage />
-      </div>
-    </DashboardLayout>
-  );
+function TasksRedirect() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  params.set('type', 'tasks');
+
+  return <Navigate to={`/events?${params.toString()}`} replace />;
 }
 
-export default function Tasks() {
+export default function TasksPage() {
   return (
     <ProtectedRoute>
-      <TasksContent />
+      <TasksRedirect />
     </ProtectedRoute>
   );
 }

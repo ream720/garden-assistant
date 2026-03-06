@@ -131,9 +131,9 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate(`/notes?spaceId=${space.id}`)}>
+            <DropdownMenuItem onClick={() => navigate(`/events?type=notes&spaceId=${space.id}`)}>
               <StickyNote className="mr-2 h-4 w-4" />
-              View Notes ({resolvedNoteCount})
+              View Events ({resolvedNoteCount})
             </DropdownMenuItem>
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
               <DialogTrigger asChild>
@@ -212,3 +212,4 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
     </Card>
   );
 }
+

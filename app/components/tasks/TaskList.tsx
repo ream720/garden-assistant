@@ -26,6 +26,7 @@ interface TaskListProps {
   onDeleteTask: (taskId: string) => void;
   onCreateNote?: (task: Task) => void;
   className?: string;
+  showDescription?: boolean;
 }
 
 type FilterTab = 'all' | 'pending' | 'issues' | 'dueSoon' | 'overdue' | 'completed';
@@ -74,6 +75,7 @@ export function TaskList({
   onDeleteTask,
   onCreateNote,
   className,
+  showDescription = true,
 }: TaskListProps) {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
@@ -332,9 +334,11 @@ export function TaskList({
               ]}
             />
           </div>
+          {showDescription && (
           <p className="max-w-3xl text-sm text-muted-foreground">
             Tasks are for scheduled care and required actions. Use notes for open-ended observations, photo logs, and long-term context.
           </p>
+          )}
         </div>
         <Button onClick={onCreateTask}>
           <Plus className="mr-2 h-4 w-4" />
@@ -543,6 +547,8 @@ export function TaskList({
     </div>
   );
 }
+
+
 
 
 

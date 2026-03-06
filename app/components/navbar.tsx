@@ -1,17 +1,26 @@
-import { Link, useLocation } from "react-router";
-import { useState } from "react";
-import { Menu, X, Home, Building2, Sprout, StickyNote, CheckSquare, Settings, User, ChevronDown } from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "~/components/ui/sheet";
+import { Link, useLocation } from 'react-router';
+import { useState } from 'react';
+import {
+  Menu,
+  Home,
+  Building2,
+  Sprout,
+  CalendarDays,
+  Settings,
+  User,
+  ChevronDown,
+} from 'lucide-react';
+import { Button } from '~/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '~/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { cn } from "~/lib/utils";
-import { useAuthStore } from "~/stores/authStore";
-import type { LucideIcon } from "lucide-react";
+} from '~/components/ui/dropdown-menu';
+import { cn } from '~/lib/utils';
+import { useAuthStore } from '~/stores/authStore';
+import type { LucideIcon } from 'lucide-react';
 
 interface NavigationItem {
   name: string;
@@ -30,25 +39,24 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const publicNavigation: NavigationItem[] = [
-    { name: "Home", href: "/", icon: Home },
-    { name: "About", href: "/about", icon: Home },
-    { name: "Login", href: "/login", icon: Home },
+    { name: 'Home', href: '/', icon: Home },
+    { name: 'About', href: '/about', icon: Home },
+    { name: 'Login', href: '/login', icon: Home },
   ];
 
   const authenticatedNavigation: NavigationItem[] = [
     {
-      name: "Dashboard",
-      href: "/dashboard",
+      name: 'Dashboard',
+      href: '/dashboard',
       icon: Home,
       children: [
-        { name: "Spaces", href: "/spaces", icon: Building2 },
-        { name: "Plants", href: "/plants", icon: Sprout },
-        { name: "Notes", href: "/notes", icon: StickyNote },
-        { name: "Tasks", href: "/tasks", icon: CheckSquare },
-      ]
+        { name: 'Spaces', href: '/spaces', icon: Building2 },
+        { name: 'Plants', href: '/plants', icon: Sprout },
+        { name: 'Events', href: '/events', icon: CalendarDays },
+      ],
     },
-    { name: "Profile", href: "/profile", icon: User },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: 'Profile', href: '/profile', icon: User },
+    { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   const navigation = user ? authenticatedNavigation : publicNavigation;
@@ -75,8 +83,9 @@ export function Navbar() {
             <div className="flex items-center space-x-4">
               {navigation.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.href ||
-                  (item.children?.some(child => location.pathname.startsWith(child.href)));
+                const isActive =
+                  location.pathname === item.href ||
+                  item.children?.some((child) => location.pathname.startsWith(child.href));
 
                 if (item.children) {
                   return (
@@ -84,10 +93,10 @@ export function Navbar() {
                       <DropdownMenuTrigger asChild>
                         <button
                           className={cn(
-                            "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors outline-none",
+                            'flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors outline-none',
                             isActive
-                              ? "bg-accent text-accent-foreground"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                              ? 'bg-accent text-accent-foreground'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                           )}
                         >
                           <Icon className="h-4 w-4" />
@@ -123,10 +132,10 @@ export function Navbar() {
                     key={item.name}
                     to={item.href}
                     className={cn(
-                      "flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                      'flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                       isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                        ? 'bg-accent text-accent-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                     )}
                   >
                     <Icon className="h-4 w-4" />
@@ -135,26 +144,16 @@ export function Navbar() {
                 );
               })}
               {user && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="ml-2"
-                >
+                <Button variant="outline" size="sm" onClick={handleLogout} className="ml-2">
                   Log Out
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Mobile menu */}
           <div className="md:hidden flex items-center space-x-2">
             {user && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-              >
+              <Button variant="outline" size="sm" onClick={handleLogout}>
                 Log Out
               </Button>
             )}
@@ -172,8 +171,9 @@ export function Navbar() {
                   <nav className="flex flex-col space-y-2">
                     {navigation.map((item) => {
                       const Icon = item.icon;
-                      const isActive = location.pathname === item.href ||
-                        (item.children?.some(child => location.pathname.startsWith(child.href)));
+                      const isActive =
+                        location.pathname === item.href ||
+                        item.children?.some((child) => location.pathname.startsWith(child.href));
 
                       return (
                         <div key={item.name} className="flex flex-col space-y-1">
@@ -181,10 +181,10 @@ export function Navbar() {
                             to={item.href}
                             onClick={() => setMobileMenuOpen(false)}
                             className={cn(
-                              "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                              'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                               isActive
-                                ? "bg-accent text-accent-foreground"
-                                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                                ? 'bg-accent text-accent-foreground'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                             )}
                           >
                             <Icon className="h-5 w-5" />
@@ -201,10 +201,10 @@ export function Navbar() {
                                     to={child.href}
                                     onClick={() => setMobileMenuOpen(false)}
                                     className={cn(
-                                      "flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                                      'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                                       isChildActive
-                                        ? "bg-accent/50 text-accent-foreground"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                                        ? 'bg-accent/50 text-accent-foreground'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                                     )}
                                   >
                                     <ChildIcon className="h-4 w-4" />

@@ -286,7 +286,7 @@ function DashboardContent() {
           </Link>
 
           {/* Open Issues (High Priority + Overdue Pending Tasks) */}
-          <Link to="/tasks?tab=issues" className={statTileClassName}>
+          <Link to="/events?type=tasks&tab=issues" className={statTileClassName}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Open Issues</p>
@@ -300,7 +300,7 @@ function DashboardContent() {
           </Link>
 
           {/* Tasks Due Soon */}
-          <Link to="/tasks?tab=dueSoon" className={statTileClassName}>
+          <Link to="/events?type=tasks&tab=dueSoon" className={statTileClassName}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Tasks Due</p>
@@ -336,7 +336,7 @@ function DashboardContent() {
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800">
               <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-slate-900/50">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Upcoming Tasks</h3>
-                <Link to="/tasks" className="text-sm font-medium text-primary hover:text-primary/80">
+                <Link to="/events?type=tasks" className="text-sm font-medium text-primary hover:text-primary/80">
                   View All
                 </Link>
               </div>
@@ -402,7 +402,7 @@ function DashboardContent() {
                 ) : (
                   <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                     <p>No upcoming tasks.</p>
-                    <Link to="/tasks" className="mt-1 inline-block text-sm text-primary hover:text-primary/80">
+                    <Link to="/events?type=tasks" className="mt-1 inline-block text-sm text-primary hover:text-primary/80">
                       Create your first task
                     </Link>
                   </div>
@@ -458,8 +458,8 @@ function DashboardContent() {
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Quick Actions</h3>
                 <FeatureHelpPopover
                   label="Quick action help"
-                  title="Choose Notes or Tasks based on intent"
-                  description="Notes and tasks work together, but they serve different goals."
+                  title="Events includes notes and tasks"
+                  description="Events keeps both workflows together while preserving their distinct purpose."
                   items={[
                     'Use notes for observations, context, and photo records.',
                     'Use tasks for scheduled work with due dates and recurrence.',
@@ -468,7 +468,7 @@ function DashboardContent() {
                 />
               </div>
               <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                Notes log what happened. Tasks schedule what must happen next.
+                Events combines notes and tasks. Notes log what happened, and tasks schedule what happens next.
               </p>
               <div className="grid grid-cols-2 gap-4">
                 <button
@@ -674,5 +674,6 @@ export default function Dashboard() {
     </ProtectedRoute>
   );
 }
+
 
 

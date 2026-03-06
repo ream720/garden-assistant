@@ -53,7 +53,7 @@ export function UpcomingTasks({ upcomingTasks, overdueTasks, isLoading }: Upcomi
                                 </div>
                             ))}
                             {upcomingTasks.length > 3 && (
-                                <Link to="/tasks">
+                                <Link to="/events?type=tasks">
                                     <Button variant="ghost" size="sm" className="w-full mt-2">
                                         View all {upcomingTasks.length} upcoming tasks
                                     </Button>
@@ -65,7 +65,7 @@ export function UpcomingTasks({ upcomingTasks, overdueTasks, isLoading }: Upcomi
                             <Calendar className="mx-auto h-8 w-8 mb-2 opacity-50" />
                             <p className="text-sm">No upcoming tasks</p>
                             <Button variant="link" size="sm" asChild>
-                                <Link to="/tasks">Create a task</Link>
+                                <Link to="/events?type=tasks">Create a task</Link>
                             </Button>
                         </div>
                     )}
@@ -94,7 +94,7 @@ export function UpcomingTasks({ upcomingTasks, overdueTasks, isLoading }: Upcomi
                                 </div>
                             ))}
                             {overdueTasks.length > 3 && (
-                                <Link to="/tasks">
+                                <Link to="/events?type=tasks">
                                     <Button variant="ghost" size="sm" className="w-full">
                                         View all {overdueTasks.length} overdue tasks
                                     </Button>
@@ -107,3 +107,4 @@ export function UpcomingTasks({ upcomingTasks, overdueTasks, isLoading }: Upcomi
         </div>
     );
 }
+

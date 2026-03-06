@@ -46,7 +46,7 @@ export function RecentNotes({ notes, isLoading }: RecentNotesProps) {
                                 </div>
                             </div>
                         ))}
-                        <Link to="/notes">
+                        <Link to="/events?type=notes">
                             <Button variant="ghost" size="sm" className="w-full">
                                 View all notes
                             </Button>
@@ -59,3 +59,4 @@ export function RecentNotes({ notes, isLoading }: RecentNotesProps) {
         </Card>
     );
 }
+

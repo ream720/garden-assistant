@@ -7,15 +7,18 @@
 - [x] **Intro Modal / Onboarding**: Added a first-run onboarding modal with basic usage guidance for new users.
 - [x] **Spaces: Consolidated Add Action**: Implemented a single "Add" button in Space detail that supports creating both Plants and Notes.
 - [x] **Task Attachment UX Research/Design**: Implemented contextual task flows in Plant and Space detail pages (in-context add/edit/complete/delete with prefilled associations).
-- [x] **Dashboard Tile Click Behavior**: Made Dashboard stat tiles clickable with explicit routes (Active Plants -> `/plants?status=active`, Open Issues -> `/tasks?tab=issues`, Tasks Due -> `/tasks?tab=dueSoon`, Total Harvests -> `/plants?status=harvested`).
+- [x] **Dashboard Tile Click Behavior**: Made Dashboard stat tiles clickable with explicit routes (Active Plants -> `/plants?status=active`, Open Issues -> `/events?type=tasks&tab=issues`, Tasks Due -> `/events?type=tasks&tab=dueSoon`, Total Harvests -> `/plants?status=harvested`).
 - [x] **Upcoming Tasks on Dashboard**: Added plant/space context labels to upcoming task rows so each task shows what it is attached to.
 - [x] **Notes/Tasks Relationship (MVP Flow)**: Kept Tasks as schedulable entities (due date, priority, recurrence) and added linked completion-note capture as a default flow so plant/space history stays consolidated in Notes.
 - [x] **Notes vs Tasks UX Clarity Pass (March 6, 2026)**: Added page-level guidance, decision support copy, and contextual help popovers to reduce ambiguity about when to use Notes vs Tasks.
 - [x] **Dashboard Quick Actions Clarity (March 6, 2026)**: Added intent labels and Notes/Tasks helper content so users can distinguish "log context" vs "schedule work" before opening forms.
 - [x] **Task Completion Note Guidance (March 6, 2026)**: Clarified that linked completion notes create Notes-history entries tied to the same plant/space.
-- [ ] **Notes + Tasks IA Review**: Decide whether to keep separate Notes/Tasks routes long-term or introduce a unified Events timeline with type filters.
+- [x] **Notes + Tasks IA Review (March 6, 2026)**: Consolidated top-level Notes/Tasks routes into a unified `/events` workspace with Notes/Tasks type tabs and legacy redirects.
+- [ ] **Unit Test Refactor for Events (Post-IA Consolidation)**: Update unit/integration test suites that assert Notes/Tasks routes, nav labels, and page-level behavior to the new `/events` model.
+- [ ] **E2E Test Refactor for Events (Post-IA Consolidation)**: Update Playwright coverage (`e2e/notes.spec.ts`, `e2e/tasks.spec.ts`, `e2e/navigation.spec.ts`, and related dashboard deep-link checks) for `/events` tabs and legacy redirect behavior.
 - [ ] Record Harvest feature should allow a harvest note (to record success/failure/learnings/lessons etc.)
 - [ ] Consider which 4 features are the most useful to show at the top of the Dashboard (currently Acitve Plants, Open Issues, Tasks Due, and Harvests)
+- [ ] Add visual timeline feature on Events page (and think about where else it might make sense... on Plant / Space page potentially?)
 
 ## MVP Launch Checklist (Consolidated March 4, 2026)
 
@@ -136,4 +139,3 @@ Following the successful beta launch, these features will build upon the Activit
 - [ ] **Garden Stats Edge Cases**: Test with no harvests, no plants, plants without harvest dates
 - [ ] **Responsive Design**: Test profile page and activity feed on mobile/tablet viewports
 - [ ] **Date Display**: Test with activities from various time ranges (minutes ago, days ago, months ago)
-

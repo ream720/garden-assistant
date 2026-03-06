@@ -20,10 +20,11 @@ export default [
   route("/plants", "routes/plants.tsx"),
   route("/plants/:plantId", "routes/plants.$plantId.tsx"),
 
-  // Notes
-  route("/notes", "routes/notes.tsx"),
+  // Events
+  route("/events", "routes/events.tsx"),
 
-  // Tasks
+  // Legacy route redirects
+  route("/notes", "routes/notes.tsx"),
   route("/tasks", "routes/tasks.tsx"),
 
   // Profile

@@ -23,6 +23,7 @@ interface NoteListProps {
   showCreateButton?: boolean;
   title?: string;
   description?: string;
+  showDescription?: boolean;
 }
 
 const defaultDescription = 'Use notes for observations, issues, milestones, photo updates, and other context you may want to find later. Use tasks for work that needs a due date or repeat schedule. When you complete a task, you can create a linked note so history stays in one timeline.';
@@ -33,6 +34,7 @@ export function NoteList({
   showCreateButton = true,
   title = 'Notes & Observations',
   description = defaultDescription,
+  showDescription = true,
 }: NoteListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -214,7 +216,7 @@ export function NoteList({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
+        <div className={showDescription ? 'space-y-2' : ''}>
           <div className="flex items-center gap-2">
             <StickyNote className="w-5 h-5" />
             <h2 className="text-xl font-semibold">{title}</h2>
@@ -231,7 +233,9 @@ export function NoteList({
               ]}
             />
           </div>
-          <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+          {showDescription && (
+            <p className="max-w-3xl text-sm text-muted-foreground">{description}</p>
+          )}
         </div>
 
         {showCreateButton && (
@@ -468,4 +472,6 @@ export function NoteList({
     </div>
   );
 }
+
+
 

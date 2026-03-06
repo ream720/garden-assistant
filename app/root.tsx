@@ -52,7 +52,7 @@ export default function App() {
   const location = useLocation();
 
   // Hide main navbar on dashboard routes (dashboard has its own sidebar navigation)
-  const hiddenNavbarRoutes = ['/dashboard', '/spaces', '/plants', '/notes', '/tasks', '/profile', '/settings'];
+  const hiddenNavbarRoutes = ['/dashboard', '/spaces', '/plants', '/events', '/notes', '/tasks', '/profile', '/settings'];
   const shouldHideNavbar = hiddenNavbarRoutes.some(route => location.pathname.startsWith(route));
 
   useEffect(() => {
@@ -120,3 +120,4 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     </main>
   );
 }
+

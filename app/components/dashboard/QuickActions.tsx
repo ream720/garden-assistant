@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Building2, Sprout, CheckSquare, StickyNote } from 'lucide-react';
+import { Building2, Sprout, CalendarDays } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { FeatureHelpPopover } from '../shared/FeatureHelpPopover';
@@ -28,17 +28,10 @@ export function QuickActions() {
       variant: 'outline' as const,
     },
     {
-      label: 'Tasks',
-      description: 'Scheduled care work',
-      icon: CheckSquare,
-      to: '/tasks',
-      variant: 'outline' as const,
-    },
-    {
-      label: 'Notes',
-      description: 'Context and photo logs',
-      icon: StickyNote,
-      to: '/notes',
+      label: 'Events',
+      description: 'Notes and tasks hub',
+      icon: CalendarDays,
+      to: '/events',
       variant: 'outline' as const,
     },
   ];
@@ -50,11 +43,11 @@ export function QuickActions() {
           <CardTitle>Quick Actions</CardTitle>
           <FeatureHelpPopover
             label="Quick action help"
-            title="Notes vs Tasks"
-            description="Use tasks for planned care and notes for long-term context."
+            title="Events combines notes and tasks"
+            description="Open Events to switch between logging context and scheduling work."
             items={[
-              'Tasks include due dates, priority, and recurrence.',
               'Notes include photos and searchable context.',
+              'Tasks include due dates, priority, and recurrence.',
               'Task completion can also create a linked note entry.',
             ]}
           />
