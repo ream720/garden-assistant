@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { Plant } from '../lib/types';
 import { plantService } from '../lib/services/plantService';
+import { noteService } from '../lib/services/noteService';
 import { useAuthStore } from './authStore';
 
 interface PlantState {
@@ -83,6 +84,24 @@ export const usePlantStore = create<PlantState>()(
             plants: [...state.plants, newPlant],
             loading: false 
           }));
+
+          try {
+            await noteService.create(
+              {
+                content: `Plant created: ${newPlant.name} (${newPlant.variety})`,
+                category: 'milestone',
+                plantId: newPlant.id,
+                spaceId: newPlant.spaceId,
+              },
+              newPlant.userId
+            );
+          } catch (noteError) {
+            console.warn('Failed to log plant creation note:', {
+              plantId: newPlant.id,
+              error: noteError,
+            });
+          }
+
           return newPlant;
         }
       } catch (error) {

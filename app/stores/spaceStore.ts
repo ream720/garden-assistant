@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { GrowSpace } from '../lib/types';
 import { spaceService } from '../lib/services/spaceService';
+import { noteService } from '../lib/services/noteService';
 import { useAuthStore } from './authStore';
 
 interface SpaceState {
@@ -19,6 +20,14 @@ interface SpaceState {
   setError: (error: string | null) => void;
   clearError: () => void;
 }
+
+const SPACE_TYPE_LABELS: Record<GrowSpace['type'], string> = {
+  'indoor-tent': 'Indoor Tent',
+  'outdoor-bed': 'Outdoor Bed',
+  greenhouse: 'Greenhouse',
+  hydroponic: 'Hydroponic',
+  container: 'Container',
+};
 
 export const useSpaceStore = create<SpaceState>()(
   subscribeWithSelector((set, get) => ({
@@ -67,6 +76,23 @@ export const useSpaceStore = create<SpaceState>()(
             spaces: [...state.spaces, newSpace],
             loading: false 
           }));
+
+          try {
+            await noteService.create(
+              {
+                content: `Space created: ${newSpace.name} (${SPACE_TYPE_LABELS[newSpace.type]})`,
+                category: 'milestone',
+                spaceId: newSpace.id,
+              },
+              newSpace.userId
+            );
+          } catch (noteError) {
+            console.warn('Failed to log space creation note:', {
+              spaceId: newSpace.id,
+              error: noteError,
+            });
+          }
+
           return newSpace;
         }
       } catch (error) {

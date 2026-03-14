@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { useSearchParams } from 'react-router';
 import {
   AlertTriangle,
@@ -12,18 +19,18 @@ import {
   Plus,
   Repeat,
   Search,
-  Share,
-  Sidebar,
   StickyNote,
   Trash2,
   X,
 } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
 import { NoteForm } from '../components/notes/NoteForm';
 import { ProtectedRoute } from '../components/routing/ProtectedRoute';
+import { TaskCompletionDialog } from '../components/tasks/TaskCompletionDialog';
+import { TaskForm } from '../components/tasks/TaskForm';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,12 +52,20 @@ import {
 } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   Sheet,
   SheetContent,
@@ -73,15 +88,81 @@ import {
 } from '../lib/types/note';
 
 type EventsView = 'notes' | 'tasks';
+type TaskFilterTab =
+  | 'all'
+  | 'pending'
+  | 'issues'
+  | 'dueSoon'
+  | 'overdue'
+  | 'completed';
+type TaskGroupBy = 'none' | 'space' | 'plant' | 'priority' | 'dueDate';
+type NoteCategoryFilter = NoteCategory | 'all';
 
 const parseEventsView = (value: string | null): EventsView =>
   value === 'notes' ? 'notes' : 'tasks';
+
+const parseTaskFilterTab = (value: string | null): TaskFilterTab => {
+  if (
+    value === 'pending' ||
+    value === 'issues' ||
+    value === 'dueSoon' ||
+    value === 'overdue' ||
+    value === 'completed'
+  ) {
+    return value;
+  }
+
+  return 'all';
+};
+
+const parseTaskPriorityFilter = (
+  value: string | null
+): TaskPriority | 'all' => {
+  if (value === 'high' || value === 'medium' || value === 'low') {
+    return value;
+  }
+
+  return 'all';
+};
+
+const parseTaskGroupBy = (value: string | null): TaskGroupBy => {
+  if (
+    value === 'space' ||
+    value === 'plant' ||
+    value === 'priority' ||
+    value === 'dueDate'
+  ) {
+    return value;
+  }
+
+  return 'none';
+};
+
+const parseTaskContextFilter = (value: string | null) =>
+  value && value.trim() ? value : 'all';
+
+const parseNoteCategoryFilter = (value: string | null): NoteCategoryFilter => {
+  if (value === 'all' || value === null) {
+    return 'all';
+  }
+
+  if (NOTE_CATEGORIES.some((category) => category.value === value)) {
+    return value as NoteCategory;
+  }
+
+  return 'all';
+};
+
 const isSmallViewport = () =>
   typeof window !== 'undefined' && window.innerWidth < 1024;
 
 const formatDate = (date: Date) => format(date, 'MMM d, yyyy');
 const formatDateTime = (date?: Date) =>
   date ? format(date, 'MMM d, yyyy h:mm a') : 'Not available';
+const notesHelperCopy =
+  'Use notes for observations, issues, milestones, photo updates, and other context you may want to find later. Use tasks for work that needs a due date or repeat schedule.';
+const tasksHelperCopy =
+  'Issues shows pending high-priority or overdue tasks. Due Soon shows pending tasks due today or tomorrow.';
 
 const isTaskOverdue = (task: Task) => {
   if (task.status === 'completed') return false;
@@ -217,11 +298,17 @@ function TaskDetailsContent({
   task,
   spaces,
   plants,
+  onMarkComplete,
+  onEdit,
+  onDelete,
   onClose,
 }: {
   task: Task | null;
   spaces: GrowSpace[];
   plants: Plant[];
+  onMarkComplete?: (task: Task) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
   onClose?: () => void;
 }) {
   if (!task) {
@@ -245,20 +332,28 @@ function TaskDetailsContent({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-8 flex justify-end gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
-        >
-          <Share className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
+        {onEdit && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onEdit(task)}
+            aria-label="Edit task"
+            className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+        {onDelete && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => onDelete(task)}
+            aria-label="Delete task"
+            className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
         {onClose && (
           <Button
             variant="outline"
@@ -273,6 +368,16 @@ function TaskDetailsContent({
 
       <div className="max-w-2xl">
         <h2 className="mb-6 text-3xl font-bold text-white">{task.title}</h2>
+
+        {task.status === 'pending' && onMarkComplete && (
+          <Button
+            onClick={() => onMarkComplete(task)}
+            className="mb-6 bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            Mark complete
+          </Button>
+        )}
 
         <p
           className={`mb-8 text-lg leading-relaxed ${task.description ? 'text-slate-300' : 'text-slate-500'}`}
@@ -362,30 +467,6 @@ function TaskDetailsContent({
         </div>
       </div>
 
-      <div className="mt-12 rounded-xl border border-slate-800 bg-[#0f172a]/50 p-4">
-        <Input
-          type="text"
-          placeholder="Add a comment..."
-          className="mb-6 h-10 rounded-lg border-transparent bg-[#1e293b] text-slate-200 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-slate-700"
-        />
-
-        <div className="relative space-y-6 pl-4 before:absolute before:inset-0 before:ml-8 before:h-full before:w-0.5 before:-translate-x-px before:bg-gradient-to-b before:from-transparent before:via-slate-800 before:to-transparent">
-          <div className="relative flex items-start gap-4">
-            <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-4 border-[#0B1120] bg-[#1e293b] text-xs font-medium text-slate-400">
-              T
-            </div>
-            <div>
-              <p className="text-sm text-slate-300">
-                <span className="font-medium text-slate-200">Added task</span>
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Created{' '}
-                {formatDistanceToNow(task.createdAt, { addSuffix: true })}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -465,7 +546,9 @@ function NoteDetailsContent({
           <span className="text-sm text-slate-500">
             {formatDateTime(note.timestamp)}
           </span>
-          <span className="text-sm text-slate-600">�</span>
+          <span className="text-sm text-slate-600" aria-hidden="true">
+            &bull;
+          </span>
           <span className="text-sm text-slate-500">
             {formatDistanceToNow(note.timestamp, { addSuffix: true })}
           </span>
@@ -571,14 +654,31 @@ export function meta() {
 function EventsContent() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeView = parseEventsView(searchParams.get('type'));
-  const noteCategoryFilter = searchParams.get('category') || 'all';
-  const noteSpaceFilter = searchParams.get('spaceId') || 'all';
-  const notePlantFilter = searchParams.get('plantId') || 'all';
+
+  const taskTabFilter = parseTaskFilterTab(
+    searchParams.get('taskTab') ?? searchParams.get('tab')
+  );
+  const taskPriorityFilter = parseTaskPriorityFilter(
+    searchParams.get('taskPriority') ?? searchParams.get('priority')
+  );
+  const taskSpaceFilter = parseTaskContextFilter(searchParams.get('taskSpaceId'));
+  const taskPlantFilter = parseTaskContextFilter(searchParams.get('taskPlantId'));
+  const taskGroupBy = parseTaskGroupBy(
+    searchParams.get('taskGroupBy') ?? searchParams.get('groupBy')
+  );
+
+  const noteCategoryFilter = parseNoteCategoryFilter(searchParams.get('category'));
+  const noteSpaceFilter = parseTaskContextFilter(searchParams.get('spaceId'));
+  const notePlantFilter = parseTaskContextFilter(searchParams.get('plantId'));
 
   const { user } = useAuthStore();
   const {
     tasks,
     loadTasks,
+    createTask,
+    updateTask,
+    completeTask,
+    deleteTask,
     loading: tasksLoading,
     error: taskError,
     clearError: clearTaskError,
@@ -599,13 +699,12 @@ function EventsContent() {
   const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false);
 
   const [taskSearchQuery, setTaskSearchQuery] = useState('');
-  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>(
-    'all'
-  );
-  const [filterSpace, setFilterSpace] = useState<string>('all');
-  const [filterPlant, setFilterPlant] = useState<string>('all');
-  const [groupBy, setGroupBy] = useState<string>('none');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [completingTask, setCompletingTask] = useState<Task | null>(null);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [pendingDeleteTask, setPendingDeleteTask] = useState<Task | null>(null);
+  const [taskFormLoading, setTaskFormLoading] = useState(false);
 
   const [noteSearchQuery, setNoteSearchQuery] = useState('');
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -629,14 +728,16 @@ function EventsContent() {
     if (!user) return;
 
     loadNotes(user.uid, {
-      category:
-        noteCategoryFilter !== 'all'
-          ? (noteCategoryFilter as NoteCategory)
+      spaceId:
+        noteSpaceFilter !== 'all' && noteSpaceFilter !== 'none'
+          ? noteSpaceFilter
           : undefined,
-      spaceId: noteSpaceFilter !== 'all' ? noteSpaceFilter : undefined,
-      plantId: notePlantFilter !== 'all' ? notePlantFilter : undefined,
+      plantId:
+        notePlantFilter !== 'all' && notePlantFilter !== 'none'
+          ? notePlantFilter
+          : undefined,
     });
-  }, [user, loadNotes, noteCategoryFilter, notePlantFilter, noteSpaceFilter]);
+  }, [user, loadNotes, notePlantFilter, noteSpaceFilter]);
 
   useEffect(() => {
     return () => {
@@ -679,30 +780,192 @@ function EventsContent() {
       );
     }
 
-    if (filterPriority !== 'all') {
-      filtered = filtered.filter((task) => task.priority === filterPriority);
+    const today = startOfDay(new Date());
+    const dueSoonWindowEnd = new Date(today);
+    dueSoonWindowEnd.setDate(dueSoonWindowEnd.getDate() + 1);
+
+    switch (taskTabFilter) {
+      case 'pending':
+        filtered = filtered.filter((task) => task.status === 'pending');
+        break;
+      case 'issues':
+        filtered = filtered.filter(
+          (task) =>
+            task.status === 'pending' &&
+            (task.priority === 'high' || task.dueDate < today)
+        );
+        break;
+      case 'dueSoon':
+        filtered = filtered.filter(
+          (task) =>
+            task.status === 'pending' &&
+            task.dueDate >= today &&
+            task.dueDate <= dueSoonWindowEnd
+        );
+        break;
+      case 'overdue':
+        filtered = filtered.filter(
+          (task) => task.status === 'pending' && task.dueDate < today
+        );
+        break;
+      case 'completed':
+        filtered = filtered.filter((task) => task.status === 'completed');
+        break;
+      default:
+        break;
     }
 
-    if (filterSpace !== 'all') {
-      if (filterSpace === 'none') {
+    if (taskPriorityFilter !== 'all') {
+      filtered = filtered.filter((task) => task.priority === taskPriorityFilter);
+    }
+
+    if (taskSpaceFilter !== 'all') {
+      if (taskSpaceFilter === 'none') {
         filtered = filtered.filter((task) => !task.spaceId);
       } else {
-        filtered = filtered.filter((task) => task.spaceId === filterSpace);
+        filtered = filtered.filter((task) => task.spaceId === taskSpaceFilter);
       }
     }
 
-    if (filterPlant !== 'all') {
-      if (filterPlant === 'none') {
+    if (taskPlantFilter !== 'all') {
+      if (taskPlantFilter === 'none') {
         filtered = filtered.filter((task) => !task.plantId);
       } else {
-        filtered = filtered.filter((task) => task.plantId === filterPlant);
+        filtered = filtered.filter((task) => task.plantId === taskPlantFilter);
       }
     }
 
     filtered.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
     return filtered;
-  }, [tasks, taskSearchQuery, filterPriority, filterSpace, filterPlant]);
+  }, [
+    tasks,
+    taskSearchQuery,
+    taskTabFilter,
+    taskPriorityFilter,
+    taskSpaceFilter,
+    taskPlantFilter,
+  ]);
+
+  const taskCounts = useMemo(() => {
+    const today = startOfDay(new Date());
+    const dueSoonWindowEnd = new Date(today);
+    dueSoonWindowEnd.setDate(dueSoonWindowEnd.getDate() + 1);
+
+    return {
+      all: tasks.length,
+      pending: tasks.filter((task) => task.status === 'pending').length,
+      issues: tasks.filter(
+        (task) =>
+          task.status === 'pending' &&
+          (task.priority === 'high' || task.dueDate < today)
+      ).length,
+      dueSoon: tasks.filter(
+        (task) =>
+          task.status === 'pending' &&
+          task.dueDate >= today &&
+          task.dueDate <= dueSoonWindowEnd
+      ).length,
+      overdue: tasks.filter(
+        (task) => task.status === 'pending' && task.dueDate < today
+      ).length,
+      completed: tasks.filter((task) => task.status === 'completed').length,
+    };
+  }, [tasks]);
+
+  const groupedTasks = useMemo(() => {
+    if (taskGroupBy === 'none') {
+      return [{ title: 'All Tasks', tasks: filteredTasks }];
+    }
+
+    const groups = new Map<string, Task[]>();
+    const groupOrder = new Map<string, number>();
+    const today = startOfDay(new Date());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    filteredTasks.forEach((task) => {
+      let groupTitle = 'Other';
+      let order = 999;
+
+      if (taskGroupBy === 'space') {
+        if (!task.spaceId) {
+          groupTitle = 'No Space';
+          order = 1;
+        } else {
+          const space = spaces.find((item) => item.id === task.spaceId);
+          groupTitle = space?.name ?? 'Unknown Space';
+          order = 0;
+        }
+      } else if (taskGroupBy === 'plant') {
+        if (!task.plantId) {
+          groupTitle = 'No Plant';
+          order = 1;
+        } else {
+          const plant = plants.find((item) => item.id === task.plantId);
+          groupTitle = plant
+            ? plant.variety
+              ? `${plant.name} (${plant.variety})`
+              : plant.name
+            : 'Unknown Plant';
+          order = 0;
+        }
+      } else if (taskGroupBy === 'priority') {
+        groupTitle =
+          task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+        const priorityOrder: Record<TaskPriority, number> = {
+          high: 0,
+          medium: 1,
+          low: 2,
+        };
+        order = priorityOrder[task.priority];
+      } else if (taskGroupBy === 'dueDate') {
+        const dueDate = startOfDay(task.dueDate);
+        if (dueDate < today) {
+          groupTitle = 'Overdue';
+          order = 0;
+        } else if (dueDate.getTime() === today.getTime()) {
+          groupTitle = 'Today';
+          order = 1;
+        } else if (dueDate.getTime() === tomorrow.getTime()) {
+          groupTitle = 'Tomorrow';
+          order = 2;
+        } else if (dueDate <= nextWeek) {
+          groupTitle = 'This Week';
+          order = 3;
+        } else {
+          groupTitle = 'Later';
+          order = 4;
+        }
+      }
+
+      if (!groups.has(groupTitle)) {
+        groups.set(groupTitle, []);
+        groupOrder.set(groupTitle, order);
+      }
+
+      groups.get(groupTitle)?.push(task);
+    });
+
+    return [...groups.entries()]
+      .sort((a, b) => {
+        const orderA = groupOrder.get(a[0]) ?? 999;
+        const orderB = groupOrder.get(b[0]) ?? 999;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+
+        return a[0].localeCompare(b[0]);
+      })
+      .map(([title, groupItems]) => ({
+        title,
+        tasks: [...groupItems].sort(
+          (a, b) => a.dueDate.getTime() - b.dueDate.getTime()
+        ),
+      }));
+  }, [filteredTasks, taskGroupBy, spaces, plants]);
 
   const filteredNotes = useMemo(() => {
     let filtered = [...notes];
@@ -721,11 +984,19 @@ function EventsContent() {
     }
 
     if (noteSpaceFilter !== 'all') {
-      filtered = filtered.filter((note) => note.spaceId === noteSpaceFilter);
+      if (noteSpaceFilter === 'none') {
+        filtered = filtered.filter((note) => !note.spaceId);
+      } else {
+        filtered = filtered.filter((note) => note.spaceId === noteSpaceFilter);
+      }
     }
 
     if (notePlantFilter !== 'all') {
-      filtered = filtered.filter((note) => note.plantId === notePlantFilter);
+      if (notePlantFilter === 'none') {
+        filtered = filtered.filter((note) => !note.plantId);
+      } else {
+        filtered = filtered.filter((note) => note.plantId === notePlantFilter);
+      }
     }
 
     filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -745,10 +1016,35 @@ function EventsContent() {
     ? (filteredNotes.find((note) => note.id === selectedNoteId) ?? null)
     : null;
 
-  const availableNotePlantsForFilter =
-    noteSpaceFilter !== 'all'
-      ? plants.filter((plant) => plant.spaceId === noteSpaceFilter)
+  const availableTaskPlantsForFilter =
+    taskSpaceFilter !== 'all' && taskSpaceFilter !== 'none'
+      ? plants.filter((plant) => plant.spaceId === taskSpaceFilter)
       : plants;
+
+  const availableNotePlantsForFilter =
+    noteSpaceFilter === 'all'
+      ? plants
+      : noteSpaceFilter === 'none'
+        ? []
+        : plants.filter((plant) => plant.spaceId === noteSpaceFilter);
+
+  const noteCategoryCounts = useMemo(() => {
+    const counts: Record<NoteCategoryFilter, number> = {
+      all: notes.length,
+      observation: 0,
+      feeding: 0,
+      pruning: 0,
+      issue: 0,
+      milestone: 0,
+      general: 0,
+    };
+
+    notes.forEach((note) => {
+      counts[note.category] += 1;
+    });
+
+    return counts;
+  }, [notes]);
 
   useEffect(() => {
     if (
@@ -815,6 +1111,110 @@ function EventsContent() {
     setSelectedNoteId(noteId);
     if (isSmallViewport()) {
       setMobileDetailsOpen(true);
+    }
+  };
+
+  const openTaskCompletionFromList = (event: MouseEvent, task: Task) => {
+    event.stopPropagation();
+    setCompletingTask(task);
+  };
+
+  const openTaskCompletionFromDetails = (task: Task) => {
+    setCompletingTask(task);
+  };
+
+  const handleTaskCompletion = async (
+    taskId: string,
+    noteData?: {
+      content: string;
+      category: NoteCategory;
+      plantId?: string;
+      spaceId?: string;
+    }
+  ) => {
+    try {
+      await completeTask(taskId);
+
+      if (noteData && user) {
+        const sourceTask = tasks.find((task) => task.id === taskId);
+        await createNote(
+          {
+            content: noteData.content,
+            category: noteData.category,
+            plantId: sourceTask?.plantId,
+            spaceId: sourceTask?.spaceId,
+            timestamp: new Date(),
+          },
+          user.uid
+        );
+      }
+
+      toast.success(
+        noteData
+          ? 'Task completed and note added successfully'
+          : 'Task completed successfully'
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to complete task'
+      );
+      throw error;
+    }
+  };
+
+  const handleCreateTaskClick = () => {
+    setEditingTask(null);
+    setCreateTaskOpen(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setCreateTaskOpen(true);
+  };
+
+  const handleTaskFormSubmit = async (
+    taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
+    setTaskFormLoading(true);
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, taskData);
+        toast.success('Task updated successfully');
+      } else {
+        const createdTask = await createTask(taskData);
+        setSelectedTaskId(createdTask.id);
+        toast.success('Task created successfully');
+      }
+
+      setCreateTaskOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save task');
+    } finally {
+      setTaskFormLoading(false);
+    }
+  };
+
+  const handleRequestDeleteTask = (task: Task) => {
+    setPendingDeleteTask(task);
+  };
+
+  const handleDeleteTask = async () => {
+    if (!pendingDeleteTask) return;
+
+    try {
+      await deleteTask(pendingDeleteTask.id);
+      if (selectedTaskId === pendingDeleteTask.id) {
+        const nextTask = filteredTasks.find(
+          (task) => task.id !== pendingDeleteTask.id
+        );
+        setSelectedTaskId(nextTask?.id ?? null);
+      }
+      toast.success('Task deleted successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete task');
+    } finally {
+      setPendingDeleteTask(null);
     }
   };
 
@@ -902,91 +1302,113 @@ function EventsContent() {
   };
 
   const renderNotesFilters = () => (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-      <Select
-        value={noteCategoryFilter}
-        onValueChange={(value) => updateSearchParams({ category: value })}
-      >
-        <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
-          <SelectValue placeholder="All Categories" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Categories</SelectItem>
-          {NOTE_CATEGORIES.map((category) => (
-            <SelectItem key={category.value} value={category.value}>
-              {category.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={noteSpaceFilter}
-        onValueChange={(value) =>
-          updateSearchParams({ spaceId: value, plantId: null })
-        }
-      >
-        <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
-          <SelectValue placeholder="All Spaces" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Spaces</SelectItem>
-          {spaces.map((space) => (
-            <SelectItem key={space.id} value={space.id}>
-              {space.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select
-        value={notePlantFilter}
-        onValueChange={(value) => updateSearchParams({ plantId: value })}
-      >
-        <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
-          <SelectValue placeholder="All Plants" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Plants</SelectItem>
-          {availableNotePlantsForFilter.map((plant) => (
-            <SelectItem key={plant.id} value={plant.id}>
-              {plant.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <div className="relative ml-auto hidden max-w-[220px] flex-1 sm:block">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-        <Input
-          type="text"
-          placeholder="Search notes..."
-          value={noteSearchQuery}
-          onChange={(event) => setNoteSearchQuery(event.target.value)}
-          className="h-9 rounded-md border-transparent bg-[#1e293b] pl-9 text-slate-200 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-slate-700"
-        />
+    <>
+      <div className="mb-4 overflow-x-auto pb-2 scrollbar-hide">
+        <Tabs
+          value={noteCategoryFilter}
+          onValueChange={(value) => updateSearchParams({ category: value })}
+          className="min-w-max"
+        >
+          <TabsList className="min-w-max gap-1 bg-[#111d32] p-1">
+            <TabsTrigger value="all">
+              All
+              {noteCategoryCounts.all > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-2 border-transparent bg-slate-700 px-1.5 text-[10px] text-slate-300"
+                >
+                  {noteCategoryCounts.all}
+                </Badge>
+              )}
+            </TabsTrigger>
+            {NOTE_CATEGORIES.map((category) => (
+              <TabsTrigger key={category.value} value={category.value}>
+                {category.label}
+                {noteCategoryCounts[category.value] > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 border-transparent bg-slate-700 px-1.5 text-[10px] text-slate-300"
+                  >
+                    {noteCategoryCounts[category.value]}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
-      {(noteSearchQuery ||
-        noteCategoryFilter !== 'all' ||
-        noteSpaceFilter !== 'all' ||
-        notePlantFilter !== 'all') && (
-        <Button
-          variant="ghost"
-          className="text-slate-400 hover:bg-slate-800 hover:text-white"
-          onClick={() => {
-            setNoteSearchQuery('');
-            updateSearchParams({
-              category: null,
-              spaceId: null,
-              plantId: null,
-            });
-          }}
+      <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <Select
+          value={noteSpaceFilter}
+          onValueChange={(value) =>
+            updateSearchParams({ spaceId: value, plantId: null })
+          }
         >
-          Clear
-        </Button>
-      )}
-    </div>
+          <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
+            <SelectValue placeholder="Space" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Spaces</SelectItem>
+            <SelectItem value="none">No Space</SelectItem>
+            {spaces.map((space) => (
+              <SelectItem key={space.id} value={space.id}>
+                {space.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={notePlantFilter}
+          onValueChange={(value) => updateSearchParams({ plantId: value })}
+        >
+          <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
+            <SelectValue placeholder="Plant" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Plants</SelectItem>
+            <SelectItem value="none">No Plant</SelectItem>
+            {availableNotePlantsForFilter.map((plant) => (
+              <SelectItem key={plant.id} value={plant.id}>
+                {plant.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="relative ml-auto hidden max-w-[220px] flex-1 sm:block">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+          <Input
+            type="text"
+            placeholder="Search notes..."
+            value={noteSearchQuery}
+            onChange={(event) => setNoteSearchQuery(event.target.value)}
+            className="h-9 rounded-md border-transparent bg-[#1e293b] pl-9 text-slate-200 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-slate-700"
+          />
+        </div>
+
+        {(noteSearchQuery ||
+          noteCategoryFilter !== 'all' ||
+          noteSpaceFilter !== 'all' ||
+          notePlantFilter !== 'all') && (
+          <Button
+            variant="ghost"
+            className="text-slate-400 hover:bg-slate-800 hover:text-white"
+            onClick={() => {
+              setNoteSearchQuery('');
+              updateSearchParams({
+                category: null,
+                spaceId: null,
+                plantId: null,
+              });
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
+    </>
   );
   return (
     <DashboardLayout title="">
@@ -1014,22 +1436,111 @@ function EventsContent() {
 
             {activeView === 'tasks' ? (
               <>
-                <div className="mb-6 flex items-center justify-between">
-                  <h1 className="text-2xl font-bold text-white">Tasks</h1>
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold text-white">Tasks</h1>
+                    <Badge
+                      variant="secondary"
+                      className="border-transparent bg-slate-800 px-3 text-slate-300"
+                    >
+                      {filteredTasks.length}
+                    </Badge>
+                  </div>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-slate-400 hover:text-white"
+                    onClick={handleCreateTaskClick}
+                    className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"
                   >
-                    <Sidebar className="h-5 w-5" />
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Task
                   </Button>
                 </div>
 
+                <p className="mb-4 max-w-3xl text-sm text-slate-400">
+                  {tasksHelperCopy}
+                </p>
+
+                <Tabs
+                  value={taskTabFilter}
+                  onValueChange={(value) =>
+                    updateSearchParams({ taskTab: value as TaskFilterTab })
+                  }
+                  className="mb-4"
+                >
+                  <TabsList className="grid w-full grid-cols-3 gap-1 bg-[#111d32] p-1 md:grid-cols-6">
+                    <TabsTrigger value="all">
+                      All
+                      {taskCounts.all > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 border-transparent bg-slate-700 px-1.5 text-[10px] text-slate-300"
+                        >
+                          {taskCounts.all}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="pending">
+                      Pending
+                      {taskCounts.pending > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 border-transparent bg-slate-700 px-1.5 text-[10px] text-slate-300"
+                        >
+                          {taskCounts.pending}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="issues">
+                      Issues
+                      {taskCounts.issues > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="ml-2 border-transparent px-1.5 text-[10px]"
+                        >
+                          {taskCounts.issues}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="dueSoon">
+                      Due Soon
+                      {taskCounts.dueSoon > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 border-transparent bg-slate-700 px-1.5 text-[10px] text-slate-300"
+                        >
+                          {taskCounts.dueSoon}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="overdue">
+                      Overdue
+                      {taskCounts.overdue > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="ml-2 border-transparent px-1.5 text-[10px]"
+                        >
+                          {taskCounts.overdue}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="completed">
+                      Completed
+                      {taskCounts.completed > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 border-transparent bg-slate-700 px-1.5 text-[10px] text-slate-300"
+                        >
+                          {taskCounts.completed}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
                 <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   <Select
-                    value={filterPriority}
+                    value={taskPriorityFilter}
                     onValueChange={(value: TaskPriority | 'all') =>
-                      setFilterPriority(value)
+                      updateSearchParams({ taskPriority: value })
                     }
                   >
                     <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
@@ -1043,7 +1554,12 @@ function EventsContent() {
                     </SelectContent>
                   </Select>
 
-                  <Select value={filterSpace} onValueChange={setFilterSpace}>
+                  <Select
+                    value={taskSpaceFilter}
+                    onValueChange={(value) =>
+                      updateSearchParams({ taskSpaceId: value, taskPlantId: null })
+                    }
+                  >
                     <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
                       <SelectValue placeholder="Space" />
                     </SelectTrigger>
@@ -1058,14 +1574,19 @@ function EventsContent() {
                     </SelectContent>
                   </Select>
 
-                  <Select value={filterPlant} onValueChange={setFilterPlant}>
+                  <Select
+                    value={taskPlantFilter}
+                    onValueChange={(value) =>
+                      updateSearchParams({ taskPlantId: value })
+                    }
+                  >
                     <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
                       <SelectValue placeholder="Plant" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Plants</SelectItem>
                       <SelectItem value="none">No Plant</SelectItem>
-                      {plants.map((plant) => (
+                      {availableTaskPlantsForFilter.map((plant) => (
                         <SelectItem key={plant.id} value={plant.id}>
                           {plant.name}
                         </SelectItem>
@@ -1073,7 +1594,12 @@ function EventsContent() {
                     </SelectContent>
                   </Select>
 
-                  <Select value={groupBy} onValueChange={setGroupBy}>
+                  <Select
+                    value={taskGroupBy}
+                    onValueChange={(value: TaskGroupBy) =>
+                      updateSearchParams({ taskGroupBy: value })
+                    }
+                  >
                     <SelectTrigger className="h-9 w-auto gap-2 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white">
                       <SelectValue placeholder="Group By" />
                     </SelectTrigger>
@@ -1082,6 +1608,7 @@ function EventsContent() {
                       <SelectItem value="space">Space</SelectItem>
                       <SelectItem value="plant">Plant</SelectItem>
                       <SelectItem value="priority">Priority</SelectItem>
+                      <SelectItem value="dueDate">Due Date</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1095,6 +1622,33 @@ function EventsContent() {
                       className="h-9 rounded-md border-transparent bg-[#1e293b] pl-9 text-slate-200 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-slate-700"
                     />
                   </div>
+
+                  {(taskSearchQuery ||
+                    taskTabFilter !== 'all' ||
+                    taskPriorityFilter !== 'all' ||
+                    taskSpaceFilter !== 'all' ||
+                    taskPlantFilter !== 'all' ||
+                    taskGroupBy !== 'none') && (
+                    <Button
+                      variant="ghost"
+                      className="text-slate-400 hover:bg-slate-800 hover:text-white"
+                      onClick={() => {
+                        setTaskSearchQuery('');
+                        updateSearchParams({
+                          taskTab: null,
+                          taskPriority: null,
+                          taskSpaceId: null,
+                          taskPlantId: null,
+                          taskGroupBy: null,
+                          tab: null,
+                          priority: null,
+                          groupBy: null,
+                        });
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  )}
                 </div>
               </>
             ) : (
@@ -1118,6 +1672,10 @@ function EventsContent() {
                   </Button>
                 </div>
 
+                <p className="mb-4 max-w-3xl text-sm text-slate-400">
+                  {notesHelperCopy}
+                </p>
+
                 {renderNotesFilters()}
               </>
             )}
@@ -1138,60 +1696,121 @@ function EventsContent() {
                   No tasks match your filters.
                 </div>
               ) : (
-                filteredTasks.map((task) => {
-                  const isSelected = selectedTask?.id === task.id;
-                  const overdue = isTaskOverdue(task);
-
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => selectTask(task.id)}
-                      className={`group cursor-pointer rounded-xl border p-4 transition-all ${
-                        isSelected
-                          ? 'border-slate-700 bg-[#1e293b]'
-                          : 'border-slate-800/60 bg-transparent hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div className="mt-1">
-                            {task.status === 'completed' ? (
-                              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                            ) : overdue ? (
-                              <AlertTriangle className="h-5 w-5 text-amber-500" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-slate-600" />
-                            )}
-                          </div>
-                          <div className="space-y-1">
-                            <h3
-                              className={`font-medium ${task.status === 'completed' ? 'text-slate-300' : 'text-slate-200'}`}
-                            >
-                              {task.title}
-                            </h3>
-                            <p
-                              className={`text-sm ${overdue ? 'text-amber-500/80' : 'text-slate-500'}`}
-                            >
-                              Due {formatDate(task.dueDate)}
-                            </p>
-                            {task.recurrence && (
-                              <p className="text-xs text-slate-500">
-                                {formatRecurrence(task)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
+                groupedTasks.map((group) => (
+                  <div key={group.title} className="space-y-3">
+                    {taskGroupBy !== 'none' && (
+                      <div className="flex items-center justify-between px-1 pt-2">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+                          {group.title}
+                        </h3>
                         <Badge
                           variant="secondary"
-                          className={`border-transparent px-3 font-medium capitalize ${getTaskPriorityClassName(task.priority)}`}
+                          className="border-transparent bg-slate-800 px-2 text-xs text-slate-300"
                         >
-                          {task.priority}
+                          {group.tasks.length}
                         </Badge>
                       </div>
-                    </div>
-                  );
-                })
+                    )}
+                    {group.tasks.map((task) => {
+                      const isSelected = selectedTask?.id === task.id;
+                      const overdue = isTaskOverdue(task);
+
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => selectTask(task.id)}
+                          className={`group cursor-pointer rounded-xl border p-4 transition-all ${
+                            isSelected
+                              ? 'border-slate-700 bg-[#1e293b]'
+                              : 'border-slate-800/60 bg-transparent hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-4">
+                              <div className="mt-1">
+                                {task.status === 'completed' ? (
+                                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(event) =>
+                                      openTaskCompletionFromList(event, task)
+                                    }
+                                    className="rounded-full p-0.5 text-slate-600 transition-colors hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+                                    aria-label={`Mark ${task.title} complete`}
+                                    title="Mark complete"
+                                  >
+                                    <Circle
+                                      className={`h-5 w-5 ${overdue ? 'text-amber-500' : ''}`}
+                                    />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <h3
+                                  className={`font-medium ${task.status === 'completed' ? 'text-slate-300' : 'text-slate-200'}`}
+                                >
+                                  {task.title}
+                                </h3>
+                                <p
+                                  className={`text-sm ${overdue ? 'text-amber-500/80' : 'text-slate-500'}`}
+                                >
+                                  Due {formatDate(task.dueDate)}
+                                </p>
+                                {task.recurrence && (
+                                  <p className="text-xs text-slate-500">
+                                    {formatRecurrence(task)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <Badge
+                                variant="secondary"
+                                className={`border-transparent px-3 font-medium capitalize ${getTaskPriorityClassName(task.priority)}`}
+                              >
+                                {task.priority}
+                              </Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={(event) => event.stopPropagation()}
+                                    className="h-8 w-8 text-slate-500 hover:bg-slate-700/60 hover:text-slate-200"
+                                    aria-label={`Task actions for ${task.title}`}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <DropdownMenuItem
+                                    onClick={() => handleEditTask(task)}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit task
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleRequestDeleteTask(task)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete task
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
               )
             ) : noteError ? (
               <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-300">
@@ -1208,16 +1827,19 @@ function EventsContent() {
                   No notes found
                 </h3>
                 <p className="mb-5 text-sm text-slate-500">
-                  Try a different filter, or add a new note for observations,
-                  issues, milestones, or photo updates.
+                  {notes.length === 0
+                    ? 'Start documenting observations, issues, milestones, or photo progress here. Use tasks separately for work that needs scheduling.'
+                    : "Try adjusting your search or filters to find what you're looking for."}
                 </p>
-                <Button
-                  onClick={() => setCreateNoteOpen(true)}
-                  className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Note
-                </Button>
+                {notes.length === 0 && (
+                  <Button
+                    onClick={() => setCreateNoteOpen(true)}
+                    className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create First Note
+                  </Button>
+                )}
               </div>
             ) : (
               filteredNotes.map((note) => {
@@ -1260,6 +1882,9 @@ function EventsContent() {
 
                     <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                       <span>{formatDateTime(note.timestamp)}</span>
+                      <span className="text-slate-700" aria-hidden="true">
+                        &bull;
+                      </span>
                       <span>
                         {formatDistanceToNow(note.timestamp, {
                           addSuffix: true,
@@ -1294,6 +1919,9 @@ function EventsContent() {
                 task={selectedTask}
                 spaces={spaces}
                 plants={plants}
+                onMarkComplete={openTaskCompletionFromDetails}
+                onEdit={handleEditTask}
+                onDelete={handleRequestDeleteTask}
                 onClose={() => setSelectedTaskId(null)}
               />
             ) : (
@@ -1332,6 +1960,15 @@ function EventsContent() {
                 task={selectedTask}
                 spaces={spaces}
                 plants={plants}
+                onMarkComplete={openTaskCompletionFromDetails}
+                onEdit={(task) => {
+                  setMobileDetailsOpen(false);
+                  handleEditTask(task);
+                }}
+                onDelete={(task) => {
+                  setMobileDetailsOpen(false);
+                  handleRequestDeleteTask(task);
+                }}
               />
             ) : (
               <NoteDetailsContent
@@ -1352,6 +1989,56 @@ function EventsContent() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <TaskCompletionDialog
+        task={completingTask}
+        spaces={spaces}
+        plants={plants}
+        open={!!completingTask}
+        onOpenChange={(open) => !open && setCompletingTask(null)}
+        onComplete={handleTaskCompletion}
+      />
+
+      <Dialog
+        open={createTaskOpen}
+        onOpenChange={(open) => {
+          setCreateTaskOpen(open);
+          if (!open) {
+            setEditingTask(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</DialogTitle>
+            <DialogDescription>
+              Plan scheduled care actions with due dates, priority, and optional
+              repeat cadence.
+            </DialogDescription>
+          </DialogHeader>
+          <TaskForm
+            task={editingTask ?? undefined}
+            spaces={spaces}
+            plants={plants}
+            onSubmit={handleTaskFormSubmit}
+            onCancel={() => {
+              setCreateTaskOpen(false);
+              setEditingTask(null);
+            }}
+            isLoading={taskFormLoading}
+            initialSpaceId={
+              taskSpaceFilter !== 'all' && taskSpaceFilter !== 'none'
+                ? taskSpaceFilter
+                : undefined
+            }
+            initialPlantId={
+              taskPlantFilter !== 'all' && taskPlantFilter !== 'none'
+                ? taskPlantFilter
+                : undefined
+            }
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={createNoteOpen} onOpenChange={setCreateNoteOpen}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
@@ -1424,6 +2111,36 @@ function EventsContent() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!pendingDeleteTask}
+        onOpenChange={(open) => !open && setPendingDeleteTask(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this task? This action cannot be
+              undone.
+              {pendingDeleteTask?.status === 'completed' && (
+                <span className="mt-2 block font-medium">
+                  This task is already completed and will be removed from your
+                  history.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!pendingDeleteNote}

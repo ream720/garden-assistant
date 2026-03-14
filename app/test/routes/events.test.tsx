@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 import EventsPage from '../../routes/events';
 import type { GrowSpace, Plant, Task } from '../../lib/types';
-import type { Note } from '../../lib/types/note';
+import type { Note, NoteCategory } from '../../lib/types/note';
 
 let mockSearchParams = new URLSearchParams('type=tasks');
 const mockSetSearchParams = vi.fn();
@@ -13,6 +13,10 @@ const mockLoadNotes = vi.fn();
 const mockLoadSpaces = vi.fn();
 const mockLoadPlants = vi.fn();
 const mockCreateNote = vi.fn();
+const mockCreateTask = vi.fn();
+const mockCompleteTask = vi.fn();
+const mockUpdateTask = vi.fn();
+const mockDeleteTask = vi.fn();
 const mockUpdateNote = vi.fn();
 const mockDeleteNote = vi.fn();
 const mockClearTaskError = vi.fn();
@@ -46,6 +50,89 @@ vi.mock('../../components/notes/NoteForm', () => ({
   NoteForm: () => <div>Mock Note Form</div>,
 }));
 
+vi.mock('../../components/tasks/TaskForm', () => ({
+  TaskForm: ({
+    task,
+    onSubmit,
+    onCancel,
+  }: {
+    task?: Task;
+    onSubmit: (
+      data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
+    ) => Promise<void>;
+    onCancel: () => void;
+  }) => (
+    <div>
+      <p>{task ? `Editing ${task.title}` : 'Creating new task'}</p>
+      <button
+        type="button"
+        onClick={() =>
+          void onSubmit({
+            userId: 'user-1',
+            title: task ? `Updated ${task.title}` : 'New task from form',
+            description: 'Task form payload',
+            dueDate: new Date('2026-04-01T10:00:00'),
+            priority: 'high',
+            status: task?.status ?? 'pending',
+            spaceId: 'space-1',
+            plantId: 'plant-1',
+            completedAt: task?.completedAt,
+            recurrence: undefined,
+          })
+        }
+      >
+        Submit Task Form
+      </button>
+      <button type="button" onClick={onCancel}>
+        Cancel Task Form
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('../../components/tasks/TaskCompletionDialog', () => ({
+  TaskCompletionDialog: ({
+    task,
+    open,
+    onComplete,
+  }: {
+    task: Task | null;
+    open: boolean;
+    onComplete: (
+      taskId: string,
+      noteData?: {
+        content: string;
+        category: NoteCategory;
+        plantId?: string;
+        spaceId?: string;
+      }
+    ) => Promise<void>;
+  }) => {
+    if (!open || !task) return null;
+
+    return (
+      <div role="dialog" aria-label="Mock Task Completion Dialog">
+        <button type="button" onClick={() => void onComplete(task.id)}>
+          Complete without note
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            void onComplete(task.id, {
+              content: 'Linked completion note',
+              category: 'milestone',
+              plantId: task.plantId,
+              spaceId: task.spaceId,
+            })
+          }
+        >
+          Complete with note
+        </button>
+      </div>
+    );
+  },
+}));
+
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: () => ({
     user: { uid: 'user-1' },
@@ -56,6 +143,10 @@ vi.mock('../../stores/taskStore', () => ({
   useTaskStore: () => ({
     tasks: mockTasks,
     loadTasks: mockLoadTasks,
+    createTask: mockCreateTask,
+    updateTask: mockUpdateTask,
+    completeTask: mockCompleteTask,
+    deleteTask: mockDeleteTask,
     loading: false,
     error: null,
     clearError: mockClearTaskError,
@@ -124,6 +215,24 @@ describe('Events route', () => {
     mockPlants = [basePlant];
     mockNotes = [];
     mockTasks = [];
+    mockCreateNote.mockResolvedValue(undefined);
+    mockCreateTask.mockResolvedValue({
+      id: 'task-new',
+      userId: 'user-1',
+      title: 'New task from form',
+      description: 'Task form payload',
+      dueDate: new Date('2026-04-01T10:00:00'),
+      priority: 'high',
+      status: 'pending',
+      spaceId: 'space-1',
+      plantId: 'plant-1',
+      recurrence: undefined,
+      createdAt: new Date('2026-03-01T10:00:00'),
+      updatedAt: new Date('2026-03-01T10:00:00'),
+    });
+    mockCompleteTask.mockResolvedValue(undefined);
+    mockUpdateTask.mockResolvedValue(undefined);
+    mockDeleteTask.mockResolvedValue(undefined);
   });
 
   it('shows recurring completed task details including timestamps and context', async () => {
@@ -154,7 +263,7 @@ describe('Events route', () => {
     await waitFor(() =>
       expect(screen.getAllByText('Feed tomatoes').length).toBeGreaterThan(0)
     );
-    expect(screen.getByText('Completed')).toBeInTheDocument();
+    expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
     expect(
       screen.getAllByText('Every 2 weeks until Mar 31, 2026').length
     ).toBeGreaterThan(0);
@@ -186,11 +295,392 @@ describe('Events route', () => {
         0
       )
     );
-    expect(screen.getByText('Overdue')).toBeInTheDocument();
+    expect(screen.getAllByText('Overdue').length).toBeGreaterThan(0);
     expect(screen.getByText('No description provided.')).toBeInTheDocument();
     expect(screen.getByText('Does not repeat')).toBeInTheDocument();
     expect(screen.getByText('No plant attached')).toBeInTheDocument();
     expect(screen.getByText('No space attached')).toBeInTheDocument();
+  });
+
+  it('opens completion dialog from task list bubble and completes task', async () => {
+    mockTasks = [
+      {
+        id: 'task-3',
+        userId: 'user-1',
+        title: 'Water seedlings',
+        dueDate: new Date('2026-03-20T10:00:00'),
+        priority: 'medium',
+        status: 'pending',
+        createdAt: new Date('2026-03-01T10:00:00'),
+        updatedAt: new Date('2026-03-02T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Water seedlings').length).toBeGreaterThan(0)
+    );
+
+    fireEvent.click(screen.getByLabelText('Mark Water seedlings complete'));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Mock Task Completion Dialog' })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Complete without note' }));
+
+    await waitFor(() => {
+      expect(mockCompleteTask).toHaveBeenCalledWith('task-3');
+    });
+    expect(mockCreateNote).not.toHaveBeenCalled();
+  });
+
+  it('opens completion dialog from task details mark complete button', async () => {
+    mockTasks = [
+      {
+        id: 'task-4',
+        userId: 'user-1',
+        title: 'Stake tomatoes',
+        dueDate: new Date('2026-03-22T10:00:00'),
+        priority: 'low',
+        status: 'pending',
+        createdAt: new Date('2026-03-01T10:00:00'),
+        updatedAt: new Date('2026-03-02T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Stake tomatoes').length).toBeGreaterThan(0)
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark complete' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Mock Task Completion Dialog' })
+    ).toBeInTheDocument();
+  });
+
+  it('creates linked completion note with task plant and space context', async () => {
+    mockTasks = [
+      {
+        id: 'task-5',
+        userId: 'user-1',
+        title: 'Transplant pepper',
+        description: 'Move to final container',
+        dueDate: new Date('2026-03-25T10:00:00'),
+        priority: 'high',
+        status: 'pending',
+        plantId: 'plant-1',
+        spaceId: 'space-1',
+        createdAt: new Date('2026-03-01T10:00:00'),
+        updatedAt: new Date('2026-03-02T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Transplant pepper').length).toBeGreaterThan(0)
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark complete' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Complete with note' }));
+
+    await waitFor(() => {
+      expect(mockCompleteTask).toHaveBeenCalledWith('task-5');
+      expect(mockCreateNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Linked completion note',
+          category: 'milestone',
+          plantId: 'plant-1',
+          spaceId: 'space-1',
+          timestamp: expect.any(Date),
+        }),
+        'user-1'
+      );
+    });
+  });
+
+  it('creates a new task from events tasks view', async () => {
+    mockTasks = [
+      {
+        id: 'task-6',
+        userId: 'user-1',
+        title: 'Check soil moisture',
+        dueDate: new Date('2026-03-15T10:00:00'),
+        priority: 'medium',
+        status: 'pending',
+        createdAt: new Date('2026-03-01T10:00:00'),
+        updatedAt: new Date('2026-03-02T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add Task' })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Task' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Task Form' }));
+
+    await waitFor(() => {
+      expect(mockCreateTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'New task from form',
+          status: 'pending',
+          userId: 'user-1',
+        })
+      );
+    });
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+  });
+
+  it('edits a task from task details actions', async () => {
+    mockTasks = [
+      {
+        id: 'task-7',
+        userId: 'user-1',
+        title: 'Trim basil leaves',
+        dueDate: new Date('2026-03-18T10:00:00'),
+        priority: 'low',
+        status: 'pending',
+        createdAt: new Date('2026-03-01T10:00:00'),
+        updatedAt: new Date('2026-03-02T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Edit task' })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit task' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Task Form' }));
+
+    await waitFor(() => {
+      expect(mockUpdateTask).toHaveBeenCalledWith(
+        'task-7',
+        expect.objectContaining({
+          title: 'Updated Trim basil leaves',
+          status: 'pending',
+        })
+      );
+    });
+    expect(mockCreateTask).not.toHaveBeenCalled();
+  });
+
+  it('deletes a task from task details actions', async () => {
+    mockTasks = [
+      {
+        id: 'task-8',
+        userId: 'user-1',
+        title: 'Clean drip lines',
+        dueDate: new Date('2026-03-19T10:00:00'),
+        priority: 'medium',
+        status: 'completed',
+        completedAt: new Date('2026-03-20T10:00:00'),
+        createdAt: new Date('2026-03-01T10:00:00'),
+        updatedAt: new Date('2026-03-20T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Delete task' })).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete task' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => {
+      expect(mockDeleteTask).toHaveBeenCalledWith('task-8');
+    });
+  });
+
+  it('applies task deep-link filters and due-date grouping from url params', async () => {
+    mockSearchParams = new URLSearchParams(
+      'type=tasks&taskTab=overdue&taskPriority=high&taskSpaceId=space-1&taskPlantId=plant-1&taskGroupBy=dueDate'
+    );
+    mockTasks = [
+      {
+        id: 'task-9',
+        userId: 'user-1',
+        title: 'Urgent overdue task',
+        dueDate: new Date('2026-01-01T10:00:00'),
+        priority: 'high',
+        status: 'pending',
+        spaceId: 'space-1',
+        plantId: 'plant-1',
+        createdAt: new Date('2025-12-01T10:00:00'),
+        updatedAt: new Date('2025-12-02T10:00:00'),
+      },
+      {
+        id: 'task-10',
+        userId: 'user-1',
+        title: 'Future high task',
+        dueDate: new Date('2030-01-01T10:00:00'),
+        priority: 'high',
+        status: 'pending',
+        spaceId: 'space-1',
+        plantId: 'plant-1',
+        createdAt: new Date('2025-12-01T10:00:00'),
+        updatedAt: new Date('2025-12-02T10:00:00'),
+      },
+      {
+        id: 'task-11',
+        userId: 'user-1',
+        title: 'Overdue but low priority',
+        dueDate: new Date('2026-01-02T10:00:00'),
+        priority: 'low',
+        status: 'pending',
+        spaceId: 'space-1',
+        plantId: 'plant-1',
+        createdAt: new Date('2025-12-01T10:00:00'),
+        updatedAt: new Date('2025-12-02T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Urgent overdue task').length).toBeGreaterThan(
+        0
+      )
+    );
+
+    expect(screen.queryByText('Future high task')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Overdue but low priority')
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText('Overdue').length).toBeGreaterThan(0);
+  });
+
+  it('shows task status tabs and clears task filters params', async () => {
+    mockSearchParams = new URLSearchParams(
+      'type=tasks&taskTab=completed&taskPriority=medium&taskGroupBy=priority'
+    );
+    mockTasks = [
+      {
+        id: 'task-12',
+        userId: 'user-1',
+        title: 'Completed prune',
+        dueDate: new Date('2026-03-01T10:00:00'),
+        priority: 'medium',
+        status: 'completed',
+        createdAt: new Date('2026-02-01T10:00:00'),
+        updatedAt: new Date('2026-03-01T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: /All/i })).toBeInTheDocument()
+    );
+    expect(
+      screen.getByText(
+        /Issues shows pending high-priority or overdue tasks\. Due Soon shows pending tasks due today or tomorrow\./i
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Pending/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Issues/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Due Soon/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Overdue/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('tab', { name: /Completed/i })
+    ).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Add a comment...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Added task')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Search tasks...'), {
+      target: { value: 'prune' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    await waitFor(() => {
+      expect(mockSetSearchParams).toHaveBeenCalled();
+    });
+
+    const params = mockSetSearchParams.mock.calls.at(-1)?.[0] as URLSearchParams;
+    expect(params.get('type')).toBe('tasks');
+    expect(params.get('taskTab')).toBeNull();
+    expect(params.get('taskPriority')).toBeNull();
+    expect(params.get('taskSpaceId')).toBeNull();
+    expect(params.get('taskPlantId')).toBeNull();
+    expect(params.get('taskGroupBy')).toBeNull();
+  });
+
+  it('shows notes helper copy and first-note empty state guidance', async () => {
+    mockSearchParams = new URLSearchParams('type=notes');
+    mockNotes = [];
+
+    render(<EventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No notes found')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByText(
+        /Use notes for observations, issues, milestones, photo updates/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Start documenting observations, issues, milestones, or photo progress here/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create First Note' })
+    ).toBeInTheDocument();
+  });
+
+  it('shows notes filter empty-state guidance and clears note params', async () => {
+    mockSearchParams = new URLSearchParams('type=notes&category=issue');
+    mockNotes = [
+      {
+        id: 'note-filter-1',
+        userId: 'user-1',
+        content: 'General greenhouse cleanup',
+        category: 'general',
+        photos: [],
+        timestamp: new Date('2026-03-05T09:00:00'),
+        createdAt: new Date('2026-03-05T09:00:00'),
+        updatedAt: new Date('2026-03-05T09:05:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /Try adjusting your search or filters to find what you're looking for/i
+        )
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Create First Note' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    await waitFor(() => {
+      expect(mockSetSearchParams).toHaveBeenCalled();
+    });
+
+    const params = mockSetSearchParams.mock.calls.at(-1)?.[0] as URLSearchParams;
+    expect(params.get('type')).toBe('notes');
+    expect(params.get('category')).toBeNull();
+    expect(params.get('spaceId')).toBeNull();
+    expect(params.get('plantId')).toBeNull();
   });
 
   it('applies notes deep-link filters and renders note details', async () => {
@@ -238,12 +728,17 @@ describe('Events route', () => {
     expect(screen.getAllByText('Issue').length).toBeGreaterThan(0);
     expect(screen.getByText('Issue note')).toBeInTheDocument();
     expect(screen.getByText('Logged at')).toBeInTheDocument();
+    expect(screen.queryByText('�')).not.toBeInTheDocument();
     expect(mockLoadNotes).toHaveBeenCalledWith(
       'user-1',
       expect.objectContaining({
-        category: 'issue',
         spaceId: 'space-1',
       })
     );
+    const noteLoadFilters = mockLoadNotes.mock.calls.at(-1)?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(noteLoadFilters).not.toHaveProperty('category');
   });
 });

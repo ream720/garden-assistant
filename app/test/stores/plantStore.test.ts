@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { usePlantStore } from '../../stores/plantStore';
 import { useAuthStore } from '../../stores/authStore';
 import { plantService } from '../../lib/services/plantService';
+import { noteService } from '../../lib/services/noteService';
 import type { Plant } from '../../lib/types';
 
 // Mock the plant service
@@ -14,6 +15,13 @@ vi.mock('../../lib/services/plantService', () => ({
     deletePlant: vi.fn(),
     movePlant: vi.fn(),
     harvestPlant: vi.fn(),
+  },
+}));
+
+// Mock the note service
+vi.mock('../../lib/services/noteService', () => ({
+  noteService: {
+    create: vi.fn(),
   },
 }));
 
@@ -38,6 +46,8 @@ const mockPlant: Plant = {
 
 describe('Plant Store', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
+
     // Reset store state
     usePlantStore.setState({
       plants: [],
@@ -50,6 +60,17 @@ describe('Plant Store', () => {
     vi.mocked(useAuthStore.getState).mockReturnValue({
       user: { uid: 'user-1' },
     } as any);
+
+    vi.mocked(noteService.create).mockResolvedValue({
+      id: 'note-1',
+      userId: 'user-1',
+      content: '',
+      category: 'milestone',
+      photos: [],
+      timestamp: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 
   it('should load plants successfully', async () => {
@@ -102,6 +123,46 @@ describe('Plant Store', () => {
     expect(result).toEqual(newPlant);
     const state = usePlantStore.getState();
     expect(state.plants).toContain(newPlant);
+    expect(noteService.create).toHaveBeenCalledWith(
+      {
+        content: 'Plant created: New Plant (Test Variety)',
+        category: 'milestone',
+        plantId: 'plant-2',
+        spaceId: 'space-1',
+      },
+      'user-1'
+    );
+  });
+
+  it('should keep plant creation successful when note logging fails', async () => {
+    const newPlant = { ...mockPlant, id: 'plant-3', name: 'Noisy Plant' };
+    vi.mocked(plantService.createPlant).mockResolvedValue({
+      data: newPlant,
+      error: undefined,
+    });
+    vi.mocked(noteService.create).mockRejectedValueOnce(
+      new Error('note write failed')
+    );
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { createPlant } = usePlantStore.getState();
+    const result = await createPlant({
+      spaceId: 'space-1',
+      userId: 'user-1',
+      name: 'Noisy Plant',
+      variety: 'Test Variety',
+      plantedDate: new Date('2024-01-01'),
+      status: 'seedling',
+    });
+
+    expect(result).toEqual(newPlant);
+    expect(usePlantStore.getState().plants).toContain(newPlant);
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Failed to log plant creation note:',
+      expect.objectContaining({ plantId: 'plant-3' })
+    );
+
+    warnSpy.mockRestore();
   });
 
   it('should update plant successfully', async () => {

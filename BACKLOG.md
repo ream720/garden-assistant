@@ -2,6 +2,12 @@
 
 ## MVP Launch Priority Backlog (Added March 3, 2026)
 
+### Today MVP Priority (March 14, 2026)
+
+1. [x] Events UX quick wins (remove inert Events controls and clarify task-tab criteria copy).
+2. [x] Lint gate readiness (added ESLint v9 flat config + `eslint-plugin-react`; `npm run lint` passes on 2026-03-14).
+3. [ ] Harvest note flow when recording harvests.
+
 - [x] **Friendly Firebase Auth Errors (Login Flows)**: Replaced raw Firebase auth errors with user-friendly messaging for login failures (invalid credentials, quota, network, etc.).
 - [x] **Add Plant Icon Update**: Replaced generic plus icons on "Add Plant" actions with a plant-specific icon for clearer affordance.
 - [x] **Intro Modal / Onboarding**: Added a first-run onboarding modal with basic usage guidance for new users.
@@ -14,11 +20,20 @@
 - [x] **Dashboard Quick Actions Clarity (March 6, 2026)**: Added intent labels and Notes/Tasks helper content so users can distinguish "log context" vs "schedule work" before opening forms.
 - [x] **Task Completion Note Guidance (March 6, 2026)**: Clarified that linked completion notes create Notes-history entries tied to the same plant/space.
 - [x] **Notes + Tasks IA Review (March 6, 2026)**: Consolidated top-level Notes/Tasks routes into a unified `/events` workspace with Notes/Tasks type tabs and legacy redirects.
+- [x] **Events Notes Parity Polish (March 12, 2026)**: Aligned Events Notes helper/empty-state copy with legacy Notes behavior, fixed note metadata glyph issues, and made Notes filters cohesive with Tasks (category tabs, context filters, clear behavior, deep-link continuity).
+- [x] **Events Functional Parity Audit + Scope Tightening (March 14, 2026)**: Confirmed Notes/Tasks -> Events refactor is nearly complete. Remaining MVP scope is final Events UI/UX polish review plus planned unit/E2E `/events` refactors.
 - [ ] **Unit Test Refactor for Events (Post-IA Consolidation)**: Update unit/integration test suites that assert Notes/Tasks routes, nav labels, and page-level behavior to the new `/events` model.
 - [ ] **E2E Test Refactor for Events (Post-IA Consolidation)**: Update Playwright coverage (`e2e/notes.spec.ts`, `e2e/tasks.spec.ts`, `e2e/navigation.spec.ts`, and related dashboard deep-link checks) for `/events` tabs and legacy redirect behavior.
 - [ ] Record Harvest feature should allow a harvest note (to record success/failure/learnings/lessons etc.)
-- [ ] Consider which 4 features are the most useful to show at the top of the Dashboard (currently Acitve Plants, Open Issues, Tasks Due, and Harvests)
+- [ ] Consider which 4 features are the most useful to show at the top of the Dashboard (currently Active Plants, Open Issues, Tasks Due, and Harvests)
 - [ ] Add visual timeline feature on Events page (and think about where else it might make sense... on Plant / Space page potentially?)
+- [ ] **Events UI/UX Final Polish Review (Near-Complete)**: Run a focused sweep for any remaining rough edges now that no-op controls are removed; capture only concrete polish defects.
+- [x] **Events Task Filter Criteria Copy (March 14, 2026)**: Added explicit helper copy in Events Tasks view to define `Issues` (pending high-priority or overdue) and `Due Soon` (pending tasks due today/tomorrow window).
+- [x] **Events: Remove inert task-details comment box/timeline (March 14, 2026)**: Removed non-functional UI from task details.
+- [x] **Events: Remove inert sidebar-collapse control (March 14, 2026)**: Removed non-functional control from Events Tasks header.
+- [ ] **Post-MVP Lint Hardening**: Re-enable `react/no-unescaped-entities` and clean up JSX text escapes across existing UI copy.
+- [ ] Notes: Rework filters to have Plants/Spaces main tabs (tertiary All? maybe - not sure) to reduce clutter 
+
 
 ## MVP Launch Checklist (Consolidated March 4, 2026)
 
@@ -26,7 +41,7 @@ Source docs: `MVP_TEST_GATE.md`, `E2E_TESTING.md`, `TEST_SUMMARY.md`
 
 ### Release Gates (Pre-Invite / Pre-Launch)
 
-- [ ] **Lint Gate Readiness**: Add ESLint v9 flat config (`eslint.config.*`) or pin ESLint v8 so lint can become a required deploy gate.
+- [x] **Lint Gate Readiness (March 14, 2026)**: Added ESLint v9 flat config (`eslint.config.js`) + `eslint-plugin-react` so lint can be a required deploy gate again. `react/no-unescaped-entities` is temporarily disabled and tracked for post-MVP cleanup.
 - [ ] **E2E Auth Stability**: Move login-heavy Playwright runs to Firebase Emulator or staging credentials to avoid `auth/quota-exceeded`.
 - [ ] **Flaky Test Fix**: Stabilize the intermittent plant-edit assertion in `e2e/plants.spec.ts`.
 - [ ] **Shakedown Runbook**: Before each invite wave, run and log results for `npm run typecheck`, `npm run build`, `npm run test`, and targeted `npm run test:e2e`.
