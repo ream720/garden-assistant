@@ -1,29 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { loginAsTestUser } from './helpers/auth';
 
 test.describe('Spaces', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsTestUser(page);
+    await page.goto('/spaces');
+    await expect(page).toHaveURL(/\/spaces/);
   });
 
   test('spaces page loads and shows heading', async ({ page }) => {
-    await page.goto('/spaces');
     await expect(page).toHaveTitle(/Spaces/);
     await expect(page.getByText('Grow Spaces')).toBeVisible();
     await expect(page.getByText('Manage your growing environments')).toBeVisible();
   });
 
   test('spaces page shows create space button', async ({ page }) => {
-    await page.goto('/spaces');
-
     // There should be a button or link to create a new space
     const createButton = page.getByRole('button', { name: /create|add|new/i });
     await expect(createButton.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('create space form opens and has required fields', async ({ page }) => {
-    await page.goto('/spaces');
-
     // Click the create/add space button
     const createButton = page.getByRole('button', { name: /create|add|new/i });
     await createButton.first().click();
@@ -33,8 +28,6 @@ test.describe('Spaces', () => {
   });
 
   test('can create a new space and it appears in the list', async ({ page }) => {
-    await page.goto('/spaces');
-
     // Click create button
     const createButton = page.getByRole('button', { name: /create|add|new/i });
     await createButton.first().click();
@@ -76,8 +69,6 @@ test.describe('Spaces', () => {
   });
 
   test('clicking a space card navigates to the space detail page', async ({ page }) => {
-    await page.goto('/spaces');
-
     // Wait for spaces to load
     await page.waitForTimeout(3000);
 

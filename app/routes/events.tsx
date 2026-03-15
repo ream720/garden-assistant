@@ -559,6 +559,7 @@ function NoteDetailsContent({
           variant="outline"
           size="icon"
           onClick={() => onEdit(note)}
+          aria-label="Edit note"
           className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
         >
           <Pencil className="h-4 w-4" />
@@ -567,6 +568,7 @@ function NoteDetailsContent({
           variant="outline"
           size="icon"
           onClick={() => onDelete(note)}
+          aria-label="Delete note"
           className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
         >
           <Trash2 className="h-4 w-4" />
@@ -576,6 +578,7 @@ function NoteDetailsContent({
             variant="outline"
             size="icon"
             onClick={onClose}
+            aria-label="Close note details"
             className="rounded-lg border-transparent bg-[#1e293b] text-slate-400 hover:bg-[#243247] hover:text-white"
           >
             <X className="h-4 w-4" />

@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { loginAsTestUser, logout } from './helpers/auth';
 
+const UNAUTHENTICATED_STATE = {
+  cookies: [],
+  origins: [],
+};
+
+test.use({ storageState: UNAUTHENTICATED_STATE });
+
 test.describe('Authentication', () => {
   test('login page renders with email and password fields', async ({ page }) => {
     await page.goto('/login');

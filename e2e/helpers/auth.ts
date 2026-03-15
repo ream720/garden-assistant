@@ -19,12 +19,13 @@ export async function login(page: Page, email: string, password: string) {
  * Uses VITE_FIREBASE_LOGIN_USER and VITE_FIREBASE_LOGIN_PW.
  */
 export async function loginAsTestUser(page: Page) {
-  const email = process.env.VITE_FIREBASE_LOGIN_USER;
-  const password = process.env.VITE_FIREBASE_LOGIN_PW;
+  const email = process.env.PW_E2E_EMAIL || process.env.VITE_FIREBASE_LOGIN_USER;
+  const password =
+    process.env.PW_E2E_PASSWORD || process.env.VITE_FIREBASE_LOGIN_PW;
 
   if (!email || !password) {
     throw new Error(
-      'VITE_FIREBASE_LOGIN_USER and VITE_FIREBASE_LOGIN_PW must be set in .env'
+      'PW_E2E_EMAIL/PW_E2E_PASSWORD or VITE_FIREBASE_LOGIN_USER/VITE_FIREBASE_LOGIN_PW must be set in .env'
     );
   }
 

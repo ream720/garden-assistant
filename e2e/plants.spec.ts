@@ -1,10 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsTestUser } from './helpers/auth';
 
 test.describe('Plants', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsTestUser(page);
     await page.goto('/plants');
+    await expect(page).toHaveURL(/\/plants/);
   });
 
   test('plants page loads with heading and subtitle', async ({ page }) => {
@@ -209,18 +208,16 @@ test.describe('Plants', () => {
   });
 
   test('can edit a plant from the detail page', async ({ page }) => {
-    // Create a plant to edit
-    await page.waitForTimeout(2000);
-
     const addButton = page.getByRole('button', { name: 'Add Plant' });
     await addButton.first().click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
+    const createDialog = page.getByRole('dialog');
+    await expect(createDialog).toBeVisible({ timeout: 5000 });
 
     const testPlantName = `E2E Edit Plant ${Date.now()}`;
-    await page.getByPlaceholder('e.g., Tomato #1').fill(testPlantName);
-    await page.getByPlaceholder('e.g., Cherry Tomato').fill('Edit Variety');
+    await createDialog.getByPlaceholder('e.g., Tomato #1').fill(testPlantName);
+    await createDialog.getByPlaceholder('e.g., Cherry Tomato').fill('Edit Variety');
 
-    const spaceSelect = page.getByRole('dialog').locator('[role="combobox"]').first();
+    const spaceSelect = createDialog.locator('[role="combobox"]').first();
     if (await spaceSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
       await spaceSelect.click();
       const options = page.getByRole('option');
@@ -228,12 +225,14 @@ test.describe('Plants', () => {
       await options.nth(optCount > 1 ? 1 : 0).click();
     }
 
-    await page.getByRole('dialog').getByRole('button', { name: 'Add Plant' }).click();
+    await createDialog.getByRole('button', { name: 'Add Plant' }).click();
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 });
     await expect(page.getByText(testPlantName)).toBeVisible({ timeout: 15000 });
 
     // Navigate to its detail page
     await page.locator('a[href*="/plants/"]').filter({ hasText: testPlantName }).click();
     await expect(page).toHaveURL(/\/plants\/.+/, { timeout: 10000 });
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(testPlantName, { timeout: 10000 });
 
     // Click Edit Plant
     await page.getByRole('button', { name: 'Edit Plant' }).click();
@@ -248,22 +247,20 @@ test.describe('Plants', () => {
     await nameInput.fill(editedName);
 
     // Submit
-    await page.getByRole('dialog').getByRole('button', { name: 'Update Plant' }).click();
-
-    // Wait for the dialog to close and the store to reload plants
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10000 });
-    await page.waitForTimeout(2000);
+    await editDialog.getByRole('button', { name: 'Update Plant' }).click();
+    await expect(editDialog).not.toBeVisible({ timeout: 10000 });
 
     // Verify the name changed on the detail page
-    await expect(page.getByRole('heading', { name: editedName })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(editedName, { timeout: 20000 });
 
     // Clean up: go back to plants list and delete
     await page.goto('/plants');
-    await page.waitForTimeout(2000);
+    await expect(page).toHaveURL(/\/plants/);
+    await expect(page.getByText(editedName)).toBeVisible({ timeout: 15000 });
     const plantCard = page.locator('[class*="card"], [class*="Card"]').filter({ hasText: editedName });
-    const menuButton = plantCard.locator('button:has(svg)').last();
-    if (await menuButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await menuButton.click();
+    const menuButton = plantCard.getByRole('button', { name: /more/i }).or(plantCard.locator('button:has(svg)').last());
+    if (await menuButton.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+      await menuButton.first().click();
       const deleteItem = page.getByRole('menuitem', { name: /delete/i });
       if (await deleteItem.isVisible({ timeout: 2000 }).catch(() => false)) {
         await deleteItem.click();

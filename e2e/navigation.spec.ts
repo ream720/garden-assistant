@@ -1,12 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { loginAsTestUser } from './helpers/auth';
+
+const UNAUTHENTICATED_STATE = {
+  cookies: [],
+  origins: [],
+};
 
 test.describe('Navigation & Routing', () => {
   test.describe('Public pages', () => {
+    test.use({ storageState: UNAUTHENTICATED_STATE });
+
     test('home page is accessible without authentication', async ({ page }) => {
       await page.goto('/');
       await expect(page).toHaveURL('/');
-      // Should not redirect to login
       await expect(page).not.toHaveURL(/\/login/);
     });
 
@@ -29,38 +34,45 @@ test.describe('Navigation & Routing', () => {
     });
   });
 
-  test.describe('Protected routes redirect to login', () => {
-    test('dashboard redirects to login when not authenticated', async ({ page }) => {
+  test.describe('Protected routes redirect to login when not authenticated', () => {
+    test.use({ storageState: UNAUTHENTICATED_STATE });
+
+    test('dashboard redirects to login', async ({ page }) => {
       await page.goto('/dashboard');
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('spaces redirects to login when not authenticated', async ({ page }) => {
+    test('spaces redirects to login', async ({ page }) => {
       await page.goto('/spaces');
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('plants redirects to login when not authenticated', async ({ page }) => {
+    test('plants redirects to login', async ({ page }) => {
       await page.goto('/plants');
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('notes redirects to login when not authenticated', async ({ page }) => {
+    test('events redirects to login', async ({ page }) => {
+      await page.goto('/events');
+      await expect(page).toHaveURL(/\/login/);
+    });
+
+    test('legacy notes route redirects to login', async ({ page }) => {
       await page.goto('/notes');
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('tasks redirects to login when not authenticated', async ({ page }) => {
+    test('legacy tasks route redirects to login', async ({ page }) => {
       await page.goto('/tasks');
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('profile redirects to login when not authenticated', async ({ page }) => {
+    test('profile redirects to login', async ({ page }) => {
       await page.goto('/profile');
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('settings redirects to login when not authenticated', async ({ page }) => {
+    test('settings redirects to login', async ({ page }) => {
       await page.goto('/settings');
       await expect(page).toHaveURL(/\/login/);
     });
@@ -68,18 +80,24 @@ test.describe('Navigation & Routing', () => {
 
   test.describe('Authenticated navigation', () => {
     test.beforeEach(async ({ page }) => {
-      await loginAsTestUser(page);
+      await page.goto('/dashboard');
+      await expect(page).toHaveURL(/\/dashboard/);
     });
 
-    test('sidebar shows all navigation links', async ({ page }) => {
+    test('sidebar shows Events IA links', async ({ page }) => {
       const nav = page.locator('nav');
       await expect(nav.getByRole('link', { name: 'Dashboard' })).toBeVisible();
       await expect(nav.getByRole('link', { name: 'Spaces' })).toBeVisible();
       await expect(nav.getByRole('link', { name: 'Plants' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Notes' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Tasks' })).toBeVisible();
+      await expect(nav.getByRole('link', { name: 'Events' })).toBeVisible();
       await expect(nav.getByRole('link', { name: 'Profile' })).toBeVisible();
       await expect(nav.getByRole('link', { name: 'Settings' })).toBeVisible();
+    });
+
+    test('can navigate to Events via sidebar', async ({ page }) => {
+      await page.locator('nav').getByRole('link', { name: 'Events' }).click();
+      await expect(page).toHaveURL(/\/events/);
+      await expect(page).toHaveTitle(/Events/);
     });
 
     test('can navigate to Spaces via sidebar', async ({ page }) => {
@@ -104,6 +122,22 @@ test.describe('Navigation & Routing', () => {
       await page.locator('nav').getByRole('link', { name: 'Settings' }).click();
       await expect(page).toHaveURL(/\/settings/);
       await expect(page).toHaveTitle(/Settings/);
+    });
+
+    test('legacy /notes route redirects to Events notes view', async ({ page }) => {
+      await page.goto('/notes');
+      await expect(page).toHaveURL(/\/events\?.*type=notes/);
+      await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible({
+        timeout: 10000,
+      });
+    });
+
+    test('legacy /tasks route redirects to Events tasks view', async ({ page }) => {
+      await page.goto('/tasks');
+      await expect(page).toHaveURL(/\/events\?.*type=tasks/);
+      await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible({
+        timeout: 10000,
+      });
     });
 
     test('Log Out button is visible when authenticated', async ({ page }) => {

@@ -4,6 +4,11 @@ A modern, production-ready template for building full-stack React applications u
 
 [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
 
+## Engineering Planning Docs
+
+Project planning docs live in [`engineering/`](./engineering/README.md).
+Legacy root-level planning markdown files were removed as part of MVP pre-launch cleanup.
+
 ## Features
 
 - 🚀 Server-side rendering

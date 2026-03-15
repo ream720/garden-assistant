@@ -1,18 +1,22 @@
 # Engineering Backlog Index
 
-Last updated: March 15, 2026
+Last updated: March 15, 2026 (post emulator stabilization + runbook pass)
 
 Use this file as the control-plane backlog. Detailed work lives in focused docs linked below.
 
 ## Now
 
-- [ ] Complete Events testing hardening pass (unit + E2E migration + flaky test stabilization). See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
-- [ ] Ship remaining MVP dashboard polish items (`empty states`, `new user CTA`, `quick action modal flicker`). See [`MVP_LAUNCH_BACKLOG.md`](./MVP_LAUNCH_BACKLOG.md).
-- [ ] Run pre-invite shakedown with gate command log. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
-- [ ] Run Firebase Auth audit and implement quota-safe auth testing utilities across unit/integration/E2E. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+- [ ] Run Firebase Auth audit and capture quota-risk mitigations in release docs. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+- [ ] Run pre-invite shakedown with gate command log, including full emulator-backed Playwright runs. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+- [ ] Complete remaining MVP E2E coverage gaps (note photos, profile/settings, auth edge cases, resilience/responsive smoke). See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+
+Recent milestone (completed):
+
+- [x] Emulator-first E2E workflow stabilized (startup/seed/auth bootstrap path) and documented in [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md).
 
 ## Next
 
+- [ ] Improve dashboard UX for visualizing spaces and plants together. See [`MVP_LAUNCH_BACKLOG.md`](./MVP_LAUNCH_BACKLOG.md).
 - [ ] Notes backward-compatibility cleanup to align with cleaner Tasks query model. See [`MVP_LAUNCH_BACKLOG.md`](./MVP_LAUNCH_BACKLOG.md).
 - [ ] Post-MVP lint hardening (`react/no-unescaped-entities` re-enable + escape cleanup). See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
 

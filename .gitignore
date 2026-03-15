@@ -1,5 +1,6 @@
 .DS_Store
 .env
+.env.example
 .env.test
 /node_modules/
 
@@ -11,6 +12,7 @@
 /test-results/
 /playwright-report/
 /playwright/.auth/
+/e2e/.auth/
 
 # Agents and Skills configurations
 .agents/

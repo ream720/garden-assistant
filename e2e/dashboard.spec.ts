@@ -1,9 +1,18 @@
-import { test, expect } from '@playwright/test';
-import { loginAsTestUser } from './helpers/auth';
+import { test, expect, type Page } from '@playwright/test';
+
+const dismissOnboardingIfVisible = async (page: Page) => {
+  const continueButton = page.getByRole('button', { name: "Let's grow" });
+  if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await continueButton.click();
+    await expect(continueButton).not.toBeVisible({ timeout: 10000 });
+  }
+};
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsTestUser(page);
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/dashboard/);
+    await dismissOnboardingIfVisible(page);
   });
 
   test('dashboard page loads successfully', async ({ page }) => {

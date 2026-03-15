@@ -14,8 +14,14 @@
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "test:e2e": "playwright test",
+    "test:e2e:emulator": "PW_USE_FIREBASE_EMULATOR=true playwright test",
+    "test:e2e:emulator:headed": "PW_USE_FIREBASE_EMULATOR=true playwright test --headed",
+    "test:e2e:emulator:ui": "PW_USE_FIREBASE_EMULATOR=true playwright test --ui",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "emulators:start:test": "node scripts/start-firebase-emulators.mjs",
+    "emulators:seed:test": "node scripts/seed-firebase-emulator.mjs",
+    "test:e2e:bootstrap": "node scripts/seed-firebase-emulator.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

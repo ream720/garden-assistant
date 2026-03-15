@@ -42,7 +42,7 @@ Current MVP focus:
 ## Delivery Workflow and Documentation Rules
 
 - Canonical planning docs live in `/engineering`.
-- Root planning markdown files are compatibility stubs only.
+- Root planning markdown files were removed pre-launch; keep planning docs in `/engineering` only.
 - Use focused backlog docs for active work:
   - MVP product: [`MVP_LAUNCH_BACKLOG.md`](./MVP_LAUNCH_BACKLOG.md)
   - Testing/release gates: [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md)
@@ -60,13 +60,13 @@ Current MVP focus:
 
 ## Known Risks and Deferred Areas
 
-- E2E stability constraints around Firebase auth quota and flaky specs.
+- Emulator startup/seed/auth-bootstrap workflow is stabilized; release confidence still depends on attaching full emulator-backed Playwright gate logs.
 - Post-MVP lint hardening still pending.
-- Dashboard polish and onboarding optimization still open.
+- Dashboard timeline expansion and deeper onboarding guidance remain deferred.
 - Monetization remains planned but not yet implemented in production flows.
 
 ## Reference Docs
 
 - Docs index: [`README.md`](./README.md)
 - Backlog index: [`BACKLOG.md`](./BACKLOG.md)
-- Test gate docs: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md), [`E2E_TESTING.md`](./E2E_TESTING.md), [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)
+- Test gate docs: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md), [`E2E_TESTING.md`](./E2E_TESTING.md), [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md), [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)

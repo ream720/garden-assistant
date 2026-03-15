@@ -33,7 +33,7 @@ Legacy docs moved from root:
 ## Documentation Workflow Rules
 
 - Treat `/engineering/*` as source-of-truth for planning docs.
-- Root-level planning markdown files are compatibility stubs only.
+- Root-level planning markdown files were removed pre-launch; do not recreate legacy root planning docs.
 - Keep active backlog files focused on open work.
 - Move completed items into archive docs to keep active planning readable.
 - Use repo-relative markdown links only (no machine-specific absolute paths).

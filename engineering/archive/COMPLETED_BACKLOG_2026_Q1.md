@@ -7,6 +7,8 @@ This archive keeps completed backlog history out of active planning docs.
 
 ## Completed MVP Launch Items
 
+- [x] Dashboard MVP polish pass (recent-activity/upcoming-task zero states, new-user `Set Up Garden` CTA, quick-action modal flicker fix).
+- [x] Locked MVP dashboard KPI tile set (`Active Plants`, `Open Issues`, `Tasks Due`, `Total Harvests`).
 - [x] Events UX quick wins (remove inert Events controls and clarify task-tab criteria copy).
 - [x] Lint gate readiness (ESLint v9 flat config + `eslint-plugin-react`; `npm run lint` passing on 2026-03-14).
 - [x] Harvest note flow when recording harvests.
@@ -35,6 +37,11 @@ This archive keeps completed backlog history out of active planning docs.
 ## Completed Release-Gate and Stability Work
 
 - [x] Lint gate readiness (`eslint.config.js` + plugin setup).
+- [x] Events-route Playwright migration (`e2e/notes.spec.ts`, `e2e/tasks.spec.ts`, `e2e/navigation.spec.ts`) with legacy redirect assertions.
+- [x] Playwright auth/bootstrap hardening via global setup + storage-state reuse.
+- [x] Firebase emulator seeding and config path for quota-safe E2E runs.
+- [x] Dashboard quick-action Playwright coverage and overdue-task automated validation.
+- [x] Plant edit Playwright flake stabilization in `e2e/plants.spec.ts`.
 
 ## Completed Bug and Hardening Items
 
@@ -44,6 +51,7 @@ This archive keeps completed backlog history out of active planning docs.
 - [x] Login timeout/session persistence behavior.
 - [x] Navigation/auth protected-route verification.
 - [x] Date handling audit and fixes.
+- [x] Root planning markdown deprecation cleanup (removed root compatibility docs; `/engineering` is sole planning source-of-truth).
 
 ## Completed Major TODOs and Feature Builds
 

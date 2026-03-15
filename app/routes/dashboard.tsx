@@ -55,7 +55,7 @@ function DashboardContent() {
   const { user } = useAuthStore();
   const { spaces, loadSpaces, createSpace, loading: spacesLoading } = useSpaceStore();
   const { plants, loadPlants, loading: plantsLoading } = usePlantStore();
-  const { tasks, loadTasks, completeTask, loading: tasksLoading } = useTaskStore();
+  const { tasks, loadTasks, createTask, completeTask, loading: tasksLoading } = useTaskStore();
   const { notes, loadNotes, createNote, loading: notesLoading } = useNoteStore();
 
   // Quick Action modal states
@@ -65,6 +65,11 @@ function DashboardContent() {
   const [showAddNote, setShowAddNote] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
+  const [taskFormKey, setTaskFormKey] = useState(0);
+  const [noteFormKey, setNoteFormKey] = useState(0);
+  const [creatingTaskFromDashboard, setCreatingTaskFromDashboard] = useState(false);
+  const [creatingNoteFromDashboard, setCreatingNoteFromDashboard] = useState(false);
+  const [creatingSpaceFromDashboard, setCreatingSpaceFromDashboard] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -143,9 +148,20 @@ function DashboardContent() {
     .slice(0, 5);
 
   const isLoading = spacesLoading || plantsLoading || tasksLoading || notesLoading;
+  const showSetupGardenCta = !isLoading && spaces.length === 0 && plants.length === 0;
 
   const statTileClassName =
     'block rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-gray-700 dark:bg-slate-800';
+
+  const closeTaskQuickAction = () => {
+    setShowAddTask(false);
+    setTaskFormKey((value) => value + 1);
+  };
+
+  const closeNoteQuickAction = () => {
+    setShowAddNote(false);
+    setNoteFormKey((value) => value + 1);
+  };
 
   // Helper for generating activity icon based on type
   const getActivityIcon = (type: string) => {
@@ -216,22 +232,28 @@ function DashboardContent() {
 
   // Quick Action handlers
   const handleCreateSpace = async (data: { name: string; type: any; description?: string }) => {
-    if (!user) return;
+    if (!user || creatingSpaceFromDashboard) return;
+    setCreatingSpaceFromDashboard(true);
     try {
       await createSpace({ ...data, userId: user.uid });
       setShowAddSpace(false);
     } catch (error) {
       console.error('Failed to create space:', error);
+    } finally {
+      setCreatingSpaceFromDashboard(false);
     }
   };
 
   const handleCreateNote = async (data: any) => {
-    if (!user) return;
+    if (!user || creatingNoteFromDashboard) return;
+    setCreatingNoteFromDashboard(true);
     try {
       await createNote(data, user.uid);
-      setShowAddNote(false);
+      closeNoteQuickAction();
     } catch (error) {
       console.error('Failed to create note:', error);
+    } finally {
+      setCreatingNoteFromDashboard(false);
     }
   };
 
@@ -334,6 +356,36 @@ function DashboardContent() {
           </Link>
         </div>
 
+        {showSetupGardenCta && (
+          <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-6 shadow-sm dark:border-emerald-900/50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-blue-950/40">
+            <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-emerald-200/60 blur-2xl dark:bg-emerald-500/20" />
+            <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                  New Garden Setup
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+                  Set up your first grow space
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
+                  Start with one space, then add plants, tasks, and notes as your cycle progresses.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => setShowAddSpace(true)}
+                  className="bg-emerald-600 text-white hover:bg-emerald-500"
+                >
+                  Set Up Garden
+                </Button>
+                <Button variant="outline" onClick={() => setShowOnboarding(true)}>
+                  View Setup Steps
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Content Areas */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           {/* Left Column (8 cols) */}
@@ -406,11 +458,26 @@ function DashboardContent() {
                     );
                   })
                 ) : (
-                  <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                    <p>No upcoming tasks.</p>
-                    <Link to="/events?type=tasks" className="mt-1 inline-block text-sm text-primary hover:text-primary/80">
-                      Create your first task
-                    </Link>
+                  <div className="p-8">
+                    <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50/70 p-6 text-center dark:border-blue-900/60 dark:bg-blue-950/30">
+                      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-300">
+                        <Calendar className="h-5 w-5" />
+                      </div>
+                      <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                        No upcoming tasks yet
+                      </h4>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                        Add your first scheduled care task so this section can keep your next steps visible.
+                      </p>
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        <Button size="sm" onClick={() => setShowAddTask(true)}>
+                          Create First Task
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/events?type=tasks">Open Events Tasks</Link>
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -422,36 +489,57 @@ function DashboardContent() {
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Recent Activity</h3>
               </div>
               <div className="p-6">
-                <ol className="relative ml-3 space-y-8 border-l border-gray-200 dark:border-gray-700">
-                  {activities.map((activity) => {
-                    const ActivityIcon = getActivityIcon(activity.type);
-                    return (
-                      <li key={activity.id} className="ml-6">
-                        <span
-                          className={cn(
-                            'absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full ring-8 ring-white dark:ring-slate-800',
-                            getActivityColor(activity.type)
-                          )}
-                        >
-                          <div className="rounded-full p-1.5">
-                            <ActivityIcon className="h-4 w-4" />
-                          </div>
-                        </span>
-                        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-slate-900/50">
-                          <div className="mb-2 items-center justify-between sm:flex">
-                            <time className="mb-1 text-xs font-normal text-gray-400 sm:order-last sm:mb-0">
-                              {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
-                            </time>
-                            <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
-                              {activity.description}
+                {activities.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/70 p-6 text-center dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-300">
+                      <CheckCircle2 className="h-5 w-5" />
+                    </div>
+                    <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                      Activity timeline is empty
+                    </h4>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                      Complete a task or log a note and your recent activity feed will populate automatically.
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <Button size="sm" onClick={() => setShowAddNote(true)}>
+                        Add Note
+                      </Button>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to="/events?type=tasks">View Tasks</Link>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <ol className="relative ml-3 space-y-8 border-l border-gray-200 dark:border-gray-700">
+                    {activities.map((activity) => {
+                      const ActivityIcon = getActivityIcon(activity.type);
+                      return (
+                        <li key={activity.id} className="ml-6">
+                          <span
+                            className={cn(
+                              'absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full ring-8 ring-white dark:ring-slate-800',
+                              getActivityColor(activity.type)
+                            )}
+                          >
+                            <div className="rounded-full p-1.5">
+                              <ActivityIcon className="h-4 w-4" />
+                            </div>
+                          </span>
+                          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-slate-900/50">
+                            <div className="mb-2 items-center justify-between sm:flex">
+                              <time className="mb-1 text-xs font-normal text-gray-400 sm:order-last sm:mb-0">
+                                {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
+                              </time>
+                              <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
+                                {activity.description}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                  {activities.length === 0 && <li className="ml-6 text-gray-500">No recent activity.</li>}
-                </ol>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
               </div>
             </div>
           </div>
@@ -613,7 +701,15 @@ function DashboardContent() {
       </Dialog>
 
       {/* Add Space Modal */}
-      <Dialog open={showAddSpace} onOpenChange={setShowAddSpace}>
+      <Dialog
+        open={showAddSpace}
+        onOpenChange={(open) => {
+          if (!open && creatingSpaceFromDashboard) {
+            return;
+          }
+          setShowAddSpace(open);
+        }}
+      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Create New Space</DialogTitle>
@@ -622,13 +718,25 @@ function DashboardContent() {
           <SpaceForm
             onSubmit={handleCreateSpace}
             onCancel={() => setShowAddSpace(false)}
-            isLoading={spacesLoading}
+            isLoading={creatingSpaceFromDashboard || spacesLoading}
           />
         </DialogContent>
       </Dialog>
 
       {/* Add Task Modal */}
-      <Dialog open={showAddTask} onOpenChange={setShowAddTask}>
+      <Dialog
+        open={showAddTask}
+        onOpenChange={(open) => {
+          if (!open && creatingTaskFromDashboard) {
+            return;
+          }
+          if (!open) {
+            closeTaskQuickAction();
+            return;
+          }
+          setShowAddTask(true);
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
@@ -637,35 +745,57 @@ function DashboardContent() {
             </DialogDescription>
           </DialogHeader>
           <TaskForm
+            key={taskFormKey}
             spaces={spaces}
             plants={plants}
             onSubmit={async (taskData) => {
+              if (creatingTaskFromDashboard) {
+                return;
+              }
+
+              setCreatingTaskFromDashboard(true);
               try {
-                await useTaskStore.getState().createTask(taskData);
-                setShowAddTask(false);
-                loadTasks();
+                await createTask(taskData);
+                closeTaskQuickAction();
+                await loadTasks();
               } catch (error) {
                 console.error('Failed to create task:', error);
+              } finally {
+                setCreatingTaskFromDashboard(false);
               }
             }}
-            onCancel={() => setShowAddTask(false)}
-            isLoading={false}
+            onCancel={closeTaskQuickAction}
+            isLoading={creatingTaskFromDashboard}
           />
         </DialogContent>
       </Dialog>
 
       {/* Add Note Modal */}
-      <Dialog open={showAddNote} onOpenChange={setShowAddNote}>
+      <Dialog
+        open={showAddNote}
+        onOpenChange={(open) => {
+          if (!open && creatingNoteFromDashboard) {
+            return;
+          }
+          if (!open) {
+            closeNoteQuickAction();
+            return;
+          }
+          setShowAddNote(true);
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Note</DialogTitle>
             <DialogDescription>Use notes for searchable context and photo history. If this should happen later or repeat, create a task instead.</DialogDescription>
           </DialogHeader>
           <NoteForm
+            key={noteFormKey}
             onSubmit={async (data) => {
               await handleCreateNote(data);
             }}
-            onCancel={() => setShowAddNote(false)}
+            onCancel={closeNoteQuickAction}
+            loading={creatingNoteFromDashboard}
           />
         </DialogContent>
       </Dialog>
@@ -680,5 +810,3 @@ export default function Dashboard() {
     </ProtectedRoute>
   );
 }
-
-
