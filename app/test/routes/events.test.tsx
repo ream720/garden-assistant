@@ -235,6 +235,32 @@ describe('Events route', () => {
     mockDeleteTask.mockResolvedValue(undefined);
   });
 
+  it('defaults /events to notes view when type is missing', async () => {
+    mockSearchParams = new URLSearchParams('');
+    mockNotes = [
+      {
+        id: 'note-default-view',
+        userId: 'user-1',
+        content: 'Default notes view entry',
+        category: 'general',
+        photos: [],
+        timestamp: new Date('2026-03-07T09:00:00'),
+        createdAt: new Date('2026-03-07T09:00:00'),
+        updatedAt: new Date('2026-03-07T09:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
+    });
+    expect(
+      screen.getAllByText('Default notes view entry').length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole('heading', { name: 'Tasks' })).not.toBeInTheDocument();
+  });
+
   it('shows recurring completed task details including timestamps and context', async () => {
     mockTasks = [
       {

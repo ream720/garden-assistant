@@ -7,7 +7,7 @@ export interface CreatePlantData {
   spaceId: string;
   userId: string;
   name: string;
-  variety: string;
+  variety?: string;
   seedSource?: string;
   plantedDate: Date;
   expectedHarvestDate?: Date;
@@ -46,15 +46,6 @@ export class PlantService extends BaseService<Plant> {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Plant name is required',
-        },
-      };
-    }
-
-    if (!data.variety?.trim()) {
-      return {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Plant variety is required',
         },
       };
     }
@@ -110,7 +101,7 @@ export class PlantService extends BaseService<Plant> {
     const plantData = {
       ...data,
       name: data.name.trim(),
-      variety: data.variety.trim(),
+      variety: data.variety?.trim() || '',
       seedSource: data.seedSource?.trim(),
       status: data.status || ('seedling' as PlantStatus), // Use provided status or default to seedling
       notes: data.notes?.trim(),
@@ -260,16 +251,6 @@ export class PlantService extends BaseService<Plant> {
       };
     }
 
-    // Validate variety if provided
-    if (updates.variety !== undefined && !updates.variety?.trim()) {
-      return {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Plant variety cannot be empty',
-        },
-      };
-    }
-
     // Validate status if provided
     if (updates.status) {
       const validStatuses: PlantStatus[] = ['seedling', 'vegetative', 'flowering', 'harvested', 'removed'];
@@ -287,7 +268,7 @@ export class PlantService extends BaseService<Plant> {
     const cleanUpdates = {
       ...updates,
       ...(updates.name && { name: updates.name.trim() }),
-      ...(updates.variety && { variety: updates.variety.trim() }),
+      ...(updates.variety !== undefined && { variety: updates.variety.trim() }),
       ...(updates.seedSource !== undefined && { seedSource: updates.seedSource?.trim() }),
       ...(updates.notes !== undefined && { notes: updates.notes?.trim() }),
     };

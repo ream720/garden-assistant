@@ -59,6 +59,8 @@ Legacy docs moved from root:
 - [`engineering/MVP_TEST_GATE.md`](./engineering/MVP_TEST_GATE.md)
 - [`engineering/E2E_TESTING.md`](./engineering/E2E_TESTING.md)
 - [`engineering/TEST_SUMMARY.md`](./engineering/TEST_SUMMARY.md)
+- [`engineering/FIREBASE_AUTH_AUDIT.md`](./engineering/FIREBASE_AUTH_AUDIT.md)
+- [`engineering/PREINVITE_SHAKEDOWN.md`](./engineering/PREINVITE_SHAKEDOWN.md)
 
 ## Project Skills
 

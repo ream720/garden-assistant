@@ -17,6 +17,7 @@ import {
 } from '../ui/dialog';
 import type { Plant, GrowSpace } from '../../lib/types';
 import { NoteList } from '../notes/NoteList';
+import { formatPlantVariety } from '../../lib/utils/plantDisplay';
 
 interface PlantDetailsProps {
   plant: Plant;
@@ -75,7 +76,7 @@ export function PlantDetails({ plant, spaces, onBack, onUpdate }: PlantDetailsPr
           )}
           <div>
             <h1 className="text-2xl font-bold">{plant.name}</h1>
-            <p className="text-muted-foreground">{plant.variety}</p>
+            <p className="text-muted-foreground">{formatPlantVariety(plant.variety)}</p>
           </div>
         </div>
         <Badge className={statusColors[plant.status]}>
@@ -116,7 +117,7 @@ export function PlantDetails({ plant, spaces, onBack, onUpdate }: PlantDetailsPr
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Variety</p>
-                <p className="text-sm">{plant.variety}</p>
+                <p className="text-sm">{formatPlantVariety(plant.variety)}</p>
               </div>
             </div>
             

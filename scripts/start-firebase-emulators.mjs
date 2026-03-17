@@ -29,7 +29,16 @@ const args = [
 
 const child = spawn(command, args, {
   cwd: process.cwd(),
-  env: process.env,
+  env: {
+    ...process.env,
+    // Prevent CLI update-check failures in restricted/home-directory-limited runners.
+    FIREBASE_SKIP_UPDATE_CHECK:
+      process.env.FIREBASE_SKIP_UPDATE_CHECK || 'true',
+    NO_UPDATE_NOTIFIER: process.env.NO_UPDATE_NOTIFIER || '1',
+    npm_config_update_notifier:
+      process.env.npm_config_update_notifier || 'false',
+    CI: process.env.CI || 'true',
+  },
   stdio: 'inherit',
 });
 

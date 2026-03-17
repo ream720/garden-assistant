@@ -190,7 +190,6 @@ describe('PlantForm', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Plant name is required')).toBeInTheDocument();
-        expect(screen.getByText('Variety is required')).toBeInTheDocument();
         expect(screen.getByText('Space selection is required')).toBeInTheDocument();
       });
     });

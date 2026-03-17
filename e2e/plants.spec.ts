@@ -338,9 +338,8 @@ test.describe('Plants', () => {
     const submitButton = page.getByRole('dialog').getByRole('button', { name: 'Add Plant' });
     await submitButton.click();
 
-    // Validation errors should appear (Zod validation messages)
+    // Validation errors should appear for required fields
     await expect(page.getByText('Plant name is required')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Variety is required')).toBeVisible({ timeout: 5000 });
   });
 
   test('can change plant status (seedling -> vegetative)', async ({ page }) => {

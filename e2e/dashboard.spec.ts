@@ -1,7 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 
+const getOnboardingCompleteButton = (page: Page) =>
+  page.getByRole('button', { name: /Complete setup|Let's grow/i });
+
 const dismissOnboardingIfVisible = async (page: Page) => {
-  const continueButton = page.getByRole('button', { name: "Let's grow" });
+  const continueButton = getOnboardingCompleteButton(page);
   if (await continueButton.isVisible({ timeout: 2000 }).catch(() => false)) {
     await continueButton.click();
     await expect(continueButton).not.toBeVisible({ timeout: 10000 });
@@ -56,4 +59,5 @@ test.describe('Dashboard', () => {
   test('plant stages distribution is visible', async ({ page }) => {
     await expect(page.getByText('Plant Stages').first()).toBeVisible({ timeout: 10000 });
   });
+
 });

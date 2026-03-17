@@ -58,7 +58,9 @@ const buildAuthStorageState = async (baseUrl: string) => {
   await page.getByRole('button', { name: 'Sign In' }).click();
   await page.waitForURL('**/dashboard', { timeout: 20000 });
 
-  const onboardingContinue = page.getByRole('button', { name: "Let's grow" });
+  const onboardingContinue = page.getByRole('button', {
+    name: /Complete setup|Let's grow/i,
+  });
   if (await onboardingContinue.isVisible().catch(() => false)) {
     await onboardingContinue.click();
     await onboardingContinue.waitFor({ state: 'hidden', timeout: 10000 });

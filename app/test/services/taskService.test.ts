@@ -59,7 +59,6 @@ describe('TaskService', () => {
 
       expect(listSpy).toHaveBeenCalledWith({
         where: [{ field: 'userId', operator: '==', value: mockUserId }],
-        orderBy: [{ field: 'dueDate', direction: 'asc' }]
       });
     });
   });
@@ -77,7 +76,6 @@ describe('TaskService', () => {
           { field: 'userId', operator: '==', value: mockUserId },
           { field: 'spaceId', operator: '==', value: mockSpaceId }
         ],
-        orderBy: [{ field: 'dueDate', direction: 'asc' }]
       });
     });
   });
@@ -95,7 +93,6 @@ describe('TaskService', () => {
           { field: 'userId', operator: '==', value: mockUserId },
           { field: 'plantId', operator: '==', value: mockPlantId }
         ],
-        orderBy: [{ field: 'dueDate', direction: 'asc' }]
       });
     });
   });

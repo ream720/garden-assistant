@@ -1,6 +1,6 @@
 # Test Gates Backlog
 
-Last updated: March 15, 2026 (post emulator startup/seed stabilization)
+Last updated: March 16, 2026 (post auth audit + E2E gap implementation pass)
 
 ## Events Refactor Test Alignment
 
@@ -8,19 +8,19 @@ Last updated: March 15, 2026 (post emulator startup/seed stabilization)
 
 ## Release Gates (Pre-Invite / Pre-Launch)
 
-- [ ] Firebase Auth audit: inventory app + test auth flows, verify provider/rules/session assumptions, and document quota risk points with mitigations.
+- [x] Firebase Auth audit: inventory app + test auth flows, verify provider/rules/session assumptions, and document quota risk points with mitigations.
 - [ ] E2E auth stability: run full local/CI validation on emulator-backed suite and confirm no quota/rate-limit regressions.
-- [ ] Shakedown runbook: log `npm run typecheck`, `npm run build`, `npm run test`, and targeted `npm run test:e2e` before invite waves.
-  - Local status (2026-03-15): `typecheck`, `lint`, `test`, `build`, `emulators:start:test`, and `emulators:seed:test` pass.
-  - Pending gate evidence: full emulator-backed Playwright run log attachment.
+- [ ] Shakedown runbook: log `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and full `npm run test:e2e:emulator` before invite waves.
+  - Local status (2026-03-16): `typecheck`, `lint`, `test`, and `build` pass; full emulator-backed run fails in this restricted runner due localhost port `EPERM`.
+  - Pending gate evidence: full zero-failure emulator-backed Playwright run logs from unrestricted local runner and CI.
 
 ## High-Priority MVP Coverage Gaps
 
-- [ ] Note photo upload E2E coverage.
-- [ ] Profile + Settings E2E coverage.
-- [ ] Auth edge-case E2E coverage (duplicate email, password mismatch, short password, reset flow, session persistence, remember-me).
-- [ ] Error/resilience checks (offline behavior, friendly Firebase errors, empty states).
-- [ ] Responsive smoke coverage (mobile nav, dashboard card stacking, form usability).
+- [x] Note photo upload E2E coverage.
+- [x] Profile + Settings E2E coverage.
+- [x] Auth edge-case E2E coverage (duplicate email, password mismatch, short password, reset flow, session persistence, remember-me).
+- [x] Error/resilience checks (offline behavior, friendly Firebase errors, empty states).
+- [x] Responsive smoke coverage (mobile nav, dashboard card stacking, form usability).
 
 ## Recently Completed
 
@@ -28,12 +28,21 @@ Last updated: March 15, 2026 (post emulator startup/seed stabilization)
 - [x] E2E test refactor for Events (`e2e/notes.spec.ts`, `e2e/tasks.spec.ts`, `e2e/navigation.spec.ts`, deep links/redirects).
 - [x] Auth test utility setup: standardized Playwright global auth bootstrap + Firebase Emulator seeding path (`e2e/global-setup.ts`, `scripts/seed-firebase-emulator.mjs`).
 - [x] Emulator startup hardening: deterministic Firebase CLI launcher (`scripts/start-firebase-emulators.mjs`) + clearer missing-CLI errors.
+- [x] Emulator startup hardening follow-up: force disable Firebase CLI update notifier checks for non-interactive runners.
 - [x] Emulator readiness hardening: robust readiness checks (Auth 405 handling + Playwright health-check via Emulator Hub endpoint).
 - [x] Emulator seed hardening under Firestore rules: authenticated token-backed writes for seeded user/space documents.
 - [x] Emulator workflow documentation: created [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md).
+- [x] Auth risk artifact created: [`FIREBASE_AUTH_AUDIT.md`](./FIREBASE_AUTH_AUDIT.md).
+- [x] Gate evidence artifact created: [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md).
 - [x] Flaky plant-edit assertion stabilization in `e2e/plants.spec.ts`.
 - [x] Overdue tasks UI validation (automated in `e2e/tasks.spec.ts`).
 - [x] Dashboard quick actions E2E coverage (`e2e/dashboard-actions.spec.ts`).
+- [x] Note photo upload automation (`e2e/notes.spec.ts`).
+- [x] Profile/settings automation (`e2e/profile-settings.spec.ts`).
+- [x] Auth edge-case automation (`e2e/auth-edge.spec.ts`).
+- [x] Resilience/responsive smoke automation (`e2e/responsive-resilience.spec.ts`).
+- [x] New-signup onboarding regression coverage (`e2e/auth-edge.spec.ts` guided setup visibility + reopen path).
+- [x] Dashboard task-query stabilization: removed index-heavy default ordering and sorted task lists client-side for startup resilience.
 
 ## Additional Test Backlog
 
@@ -50,4 +59,4 @@ Last updated: March 15, 2026 (post emulator startup/seed stabilization)
 ## References
 
 - Backlog index: [`BACKLOG.md`](./BACKLOG.md)
-- Gate docs: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md), [`E2E_TESTING.md`](./E2E_TESTING.md), [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md), [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)
+- Gate docs: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md), [`E2E_TESTING.md`](./E2E_TESTING.md), [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md), [`FIREBASE_AUTH_AUDIT.md`](./FIREBASE_AUTH_AUDIT.md), [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md), [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)

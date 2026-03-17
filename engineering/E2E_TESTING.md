@@ -1,10 +1,10 @@
 # Grospace E2E Test Suite
 
-Last updated: March 15, 2026
+Last updated: March 16, 2026
 
 ## Status
 
-- Suite size: **71 tests across 8 spec files**.
+- Suite size: **87 tests across 11 spec files**.
 - Framework: [Playwright](https://playwright.dev/) (Chromium).
 - Route model: Notes/Tasks coverage now validates the consolidated `/events` workflow.
 - Auth model: Playwright global auth bootstrap + storage-state reuse is enabled via `e2e/global-setup.ts`.
@@ -71,21 +71,20 @@ Fallback values if `PW_*` vars are not set:
 ## Current Coverage Snapshot
 
 - `auth.spec.ts` (9): login/register/reset/auth errors/basic auth flows
+- `auth-edge.spec.ts` (7): duplicate-email, mismatch/short password validation, reset flow, session reload, remember-me interaction, and first-run onboarding visibility for new signups
 - `navigation.spec.ts` (21): public/protected routing, Events IA nav, legacy `/notes` + `/tasks` redirects
 - `dashboard.spec.ts` (7): dashboard shell/stat cards/section visibility
 - `dashboard-actions.spec.ts` (4): dashboard quick-action create flows + dashboard mark-complete flow
 - `spaces.spec.ts` (5): spaces CRUD basics + space detail navigation
 - `plants.spec.ts` (13): plants CRUD + detail actions + status/move/harvest dialogs
 - `tasks.spec.ts` (7): Events tasks create/edit/delete/complete/filter + overdue status coverage
-- `notes.spec.ts` (5): Events notes create/edit/delete/filter coverage
+- `notes.spec.ts` (6): Events notes create/edit/delete/filter + note-photo upload coverage
+- `profile-settings.spec.ts` (4): profile and settings smoke/update/theme/sign-out coverage
+- `responsive-resilience.spec.ts` (4): offline friendly-error flow + mobile navigation/dashboard/settings smoke
 
 ## Remaining High-Priority Gaps
 
-- Note photo upload E2E coverage.
-- Profile + Settings E2E coverage.
-- Auth edge-case E2E coverage (duplicate email, password mismatch, short password, reset flow, session persistence, remember-me).
-- Error/resilience coverage (offline/friendly errors/empty-state behavior).
-- Responsive smoke coverage.
+- Full-run stability validation for the new slices in unrestricted emulator runners (local + CI evidence).
 
 ## Execution Caveats
 

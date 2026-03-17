@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge';
 import { Skeleton } from '../ui/skeleton';
 import type { Plant } from '../../lib/types';
+import { formatPlantVariety } from '../../lib/utils/plantDisplay';
 
 interface RecentPlantUpdatesProps {
     plants: Plant[];
@@ -33,7 +34,7 @@ export function RecentPlantUpdates({ plants, isLoading }: RecentPlantUpdatesProp
                             <div key={plant.id} className="flex items-center justify-between p-2 border rounded">
                                 <div className="flex-1">
                                     <p className="text-sm font-medium">{plant.name}</p>
-                                    <p className="text-xs text-muted-foreground">{plant.variety}</p>
+                                    <p className="text-xs text-muted-foreground">{formatPlantVariety(plant.variety)}</p>
                                 </div>
                                 <Badge variant={
                                     plant.status === 'harvested' ? 'default' :

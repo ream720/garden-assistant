@@ -74,7 +74,7 @@ export interface Plant extends FirestoreDocument {
   spaceId: string;
   userId: string;
   name: string;
-  variety: string;
+  variety?: string;
   seedSource?: string;
   plantedDate: Date;
   expectedHarvestDate?: Date;

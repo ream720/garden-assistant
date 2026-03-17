@@ -44,7 +44,7 @@ export interface PlantAddedActivity extends BaseActivity {
   data: {
     plantId: string;
     plantName: string;
-    variety: string;
+    variety?: string;
     spaceId?: string;
     spaceName?: string;
   };
@@ -55,7 +55,7 @@ export interface PlantHarvestedActivity extends BaseActivity {
   data: {
     plantId: string;
     plantName: string;
-    variety: string;
+    variety?: string;
     harvestDate: Date;
     notes?: string;
   };

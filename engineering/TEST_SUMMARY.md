@@ -1,6 +1,6 @@
 # Test Summary
 
-Last updated: March 15, 2026
+Last updated: March 16, 2026
 
 ## Current Gate Snapshot
 
@@ -8,8 +8,8 @@ Last updated: March 15, 2026
 - PASS: `npm run lint`
 - PASS: `npm run test` (**241 passing tests**)
 - PASS: `npm run build`
-- PASS: emulator bootstrap path on local runner (`npm run emulators:start:test`, `npm run emulators:seed:test`)
-- PARTIAL: full emulator-backed Playwright gate log still needs to be captured and attached.
+- PASS: gate artifacts created (`FIREBASE_AUTH_AUDIT.md`, `PREINVITE_SHAKEDOWN.md`)
+- PARTIAL: full emulator-backed Playwright gate log still needs to be captured and attached from unrestricted local/CI runners.
 
 ## Unit/Integration Coverage
 
@@ -27,12 +27,12 @@ See [`E2E_TESTING.md`](./E2E_TESTING.md) for current per-spec detail.
 
 Current suite footprint:
 
-- **71 Playwright tests** across 8 spec files.
+- **87 Playwright tests** across 11 spec files.
 - Notes/tasks E2E coverage now validates the consolidated `/events` flow.
-- Dashboard quick-action and overdue-task gaps are now covered.
+- Dashboard quick-action, overdue-task, note-photo, profile/settings, auth-edge, resilience/responsive, and new-signup onboarding visibility paths are covered in spec inventory.
 
 ## Remaining Release-Gate Work
 
 - Complete full emulator-backed Playwright run and attach logs for release records.
-- Finish remaining MVP E2E gaps (photo upload, profile/settings, auth edge-cases, resilience, responsive smoke).
+- Confirm zero-failure stability for new E2E slices in unrestricted local + CI runners.
 - Keep tracking in [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).

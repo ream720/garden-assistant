@@ -91,9 +91,10 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
   const displayPlants = spaceId ? getPlantsBySpace(spaceId) : plants;
 
   const filteredPlants = displayPlants.filter((plant) => {
+    const plantVariety = plant.variety?.toLowerCase() ?? '';
     const matchesSearch =
       plant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plant.variety.toLowerCase().includes(searchTerm.toLowerCase());
+      plantVariety.includes(searchTerm.toLowerCase());
 
     const matchesStatus =
       statusFilter === 'all'
@@ -274,4 +275,3 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
     </div>
   );
 }
-

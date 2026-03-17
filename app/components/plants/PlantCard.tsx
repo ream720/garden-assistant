@@ -28,6 +28,7 @@ import { usePlantStore } from '../../stores/plantStore';
 import { useSpaceStore } from '../../stores/spaceStore';
 import { useAuthStore } from '../../stores/authStore';
 import { noteService } from '../../lib/services/noteService';
+import { formatPlantVariety } from '../../lib/utils/plantDisplay';
 
 interface PlantCardProps {
   plant: Plant;
@@ -107,7 +108,7 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
             <Link to={`/plants/${plant.id}`} className="hover:underline">
                 <CardTitle className="text-lg">{plant.name}</CardTitle>
             </Link>
-            <p className="text-sm text-muted-foreground">{plant.variety}</p>
+            <p className="text-sm text-muted-foreground">{formatPlantVariety(plant.variety)}</p>
           </div>
           <div className="flex items-center space-x-2">
             <Badge className={statusColors[plant.status]}>
@@ -222,4 +223,3 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
     </>
   );
 }
-

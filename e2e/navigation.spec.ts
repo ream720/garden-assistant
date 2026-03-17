@@ -98,6 +98,9 @@ test.describe('Navigation & Routing', () => {
       await page.locator('nav').getByRole('link', { name: 'Events' }).click();
       await expect(page).toHaveURL(/\/events/);
       await expect(page).toHaveTitle(/Events/);
+      await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible({
+        timeout: 10000,
+      });
     });
 
     test('can navigate to Spaces via sidebar', async ({ page }) => {

@@ -7,6 +7,7 @@ import type { Note } from '../types/note';
 import type { Task } from '../types';
 import type { Plant } from '../types';
 import type { GrowSpace } from '../types';
+import { formatPlantDisplayName } from '../utils/plantDisplay';
 
 /**
  * Activity Service
@@ -215,7 +216,12 @@ export class ActivityService {
         return `Completed task: ${activity.data.title}`;
 
       case 'plant_added':
-        return `Added ${activity.data.plantName} (${activity.data.variety})`;
+        return activity.data.variety
+          ? `Added ${formatPlantDisplayName({
+              name: activity.data.plantName,
+              variety: activity.data.variety,
+            })}`
+          : `Added ${activity.data.plantName}`;
 
       case 'plant_harvested':
         return `Harvested ${activity.data.plantName}`;

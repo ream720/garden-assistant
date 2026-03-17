@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 
 import { FeatureHelpPopover } from '../shared/FeatureHelpPopover';
 import { cn } from '../../lib/utils';
+import { formatPlantDisplayName } from '../../lib/utils/plantDisplay';
 
 import type { Task, TaskPriority, GrowSpace, Plant } from '../../lib/types';
 import { useAuthStore } from '../../stores/authStore';
@@ -339,7 +340,7 @@ export function TaskForm({
               <SelectItem value="none">No specific plant</SelectItem>
               {filteredPlants.map((plant) => (
                 <SelectItem key={plant.id} value={plant.id}>
-                  {plant.name} ({plant.variety})
+                  {formatPlantDisplayName(plant)}
                 </SelectItem>
               ))}
             </SelectContent>

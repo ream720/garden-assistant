@@ -1,6 +1,6 @@
 # Engineering Handbook (Seed)
 
-Last updated: March 15, 2026
+Last updated: March 16, 2026
 
 This is a seeded long-form handbook for implementation context. Keep this concise and evolve it as architecture and release workflows mature.
 
@@ -12,7 +12,7 @@ Current MVP focus:
 
 - Consolidated `/events` workflow for notes + tasks.
 - Reliable core CRUD + linked-history behaviors (task completion notes, harvest notes).
-- Dashboard usability and onboarding clarity.
+- Dashboard usability, onboarding clarity, and per-space visibility.
 - Stable release gates (build/lint/test/e2e readiness).
 
 ## Architecture Overview
@@ -56,17 +56,17 @@ Current MVP focus:
 - `npm run lint`
 - `npm run test`
 - `npm run build`
-- `npm run test:e2e` (or targeted specs when auth quota/stability constraints apply)
+- `npm run test:e2e:emulator` (full gate run; keep zero-failure policy)
 
 ## Known Risks and Deferred Areas
 
 - Emulator startup/seed/auth-bootstrap workflow is stabilized; release confidence still depends on attaching full emulator-backed Playwright gate logs.
 - Post-MVP lint hardening still pending.
-- Dashboard timeline expansion and deeper onboarding guidance remain deferred.
+- Dashboard timeline expansion remains deferred post-MVP.
 - Monetization remains planned but not yet implemented in production flows.
 
 ## Reference Docs
 
 - Docs index: [`README.md`](./README.md)
 - Backlog index: [`BACKLOG.md`](./BACKLOG.md)
-- Test gate docs: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md), [`E2E_TESTING.md`](./E2E_TESTING.md), [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md), [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)
+- Test gate docs: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md), [`E2E_TESTING.md`](./E2E_TESTING.md), [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md), [`FIREBASE_AUTH_AUDIT.md`](./FIREBASE_AUTH_AUDIT.md), [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md), [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)

@@ -39,7 +39,7 @@ import { toDate } from '../../lib/utils/dateUtils';
 
 const plantFormSchema = z.object({
   name: z.string().min(1, 'Plant name is required'),
-  variety: z.string().min(1, 'Variety is required'),
+  variety: z.string(),
   spaceId: z.string().min(1, 'Space selection is required'),
   seedSource: z.string().optional(),
   plantedDate: z.date(),
@@ -178,7 +178,7 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
             name="variety"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Variety/Cultivar</FormLabel>
+                <FormLabel>Variety/Cultivar (Optional)</FormLabel>
                 <FormControl>
                   <Input placeholder="e.g., Cherry Tomato" {...field} />
                 </FormControl>

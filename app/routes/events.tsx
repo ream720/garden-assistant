@@ -109,7 +109,7 @@ type NoteContextFilter = 'all' | 'plants' | 'spaces';
 type NoteScopeFilter = 'all' | 'unlinked';
 
 const parseEventsView = (value: string | null): EventsView =>
-  value === 'notes' ? 'notes' : 'tasks';
+  value === 'tasks' ? 'tasks' : 'notes';
 
 const parseTaskStatusFilter = (value: string | null): TaskStatusFilter => {
   if (

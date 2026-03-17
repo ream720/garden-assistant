@@ -43,6 +43,89 @@ import {
 } from '~/components/ui/dialog';
 
 const ONBOARDING_STORAGE_KEY_PREFIX = 'grospace:onboarding';
+const ONBOARDING_STEPS = ['space', 'plant', 'task'] as const;
+
+type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
+
+type OnboardingStepsState = Record<OnboardingStep, boolean>;
+
+interface OnboardingState {
+  version: 1;
+  steps: OnboardingStepsState;
+  completed: boolean;
+  dismissed: boolean;
+  updatedAt: string;
+  completedAt: string | null;
+}
+
+const createDefaultOnboardingState = (): OnboardingState => ({
+  version: 1,
+  steps: {
+    space: false,
+    plant: false,
+    task: false,
+  },
+  completed: false,
+  dismissed: false,
+  updatedAt: new Date().toISOString(),
+  completedAt: null,
+});
+
+const createCompletedOnboardingState = (): OnboardingState => ({
+  version: 1,
+  steps: {
+    space: true,
+    plant: true,
+    task: true,
+  },
+  completed: true,
+  dismissed: true,
+  updatedAt: new Date().toISOString(),
+  completedAt: new Date().toISOString(),
+});
+
+const areAllOnboardingStepsDone = (steps: OnboardingStepsState) =>
+  ONBOARDING_STEPS.every((step) => steps[step]);
+
+const parseOnboardingState = (raw: string | null): OnboardingState => {
+  if (!raw) {
+    return createDefaultOnboardingState();
+  }
+
+  if (raw === 'seen') {
+    return createCompletedOnboardingState();
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<OnboardingState>;
+    const base = createDefaultOnboardingState();
+    const mergedSteps: OnboardingStepsState = {
+      space: Boolean(parsed.steps?.space),
+      plant: Boolean(parsed.steps?.plant),
+      task: Boolean(parsed.steps?.task),
+    };
+    const inferredComplete = Boolean(parsed.completed) || areAllOnboardingStepsDone(mergedSteps);
+
+    return {
+      version: 1,
+      steps: mergedSteps,
+      completed: inferredComplete,
+      dismissed: inferredComplete ? true : Boolean(parsed.dismissed),
+      updatedAt:
+        typeof parsed.updatedAt === 'string' && parsed.updatedAt.length > 0
+          ? parsed.updatedAt
+          : base.updatedAt,
+      completedAt:
+        inferredComplete && typeof parsed.completedAt === 'string'
+          ? parsed.completedAt
+          : inferredComplete
+            ? base.updatedAt
+            : null,
+    };
+  } catch {
+    return createDefaultOnboardingState();
+  }
+};
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -64,6 +147,8 @@ function DashboardContent() {
   const [showAddTask, setShowAddTask] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState | null>(null);
+  const [hasAutoOpenedOnboarding, setHasAutoOpenedOnboarding] = useState(false);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
   const [taskFormKey, setTaskFormKey] = useState(0);
   const [noteFormKey, setNoteFormKey] = useState(0);
@@ -83,6 +168,8 @@ function DashboardContent() {
   useEffect(() => {
     if (!user) {
       setShowOnboarding(false);
+      setOnboardingState(null);
+      setHasAutoOpenedOnboarding(false);
       return;
     }
 
@@ -91,39 +178,55 @@ function DashboardContent() {
     }
 
     const onboardingKey = `${ONBOARDING_STORAGE_KEY_PREFIX}:${user.uid}`;
-    const hasSeenOnboarding = window.localStorage.getItem(onboardingKey) === 'seen';
-
-    if (!hasSeenOnboarding) {
-      setShowOnboarding(true);
-    }
+    setOnboardingState(parseOnboardingState(window.localStorage.getItem(onboardingKey)));
+    setHasAutoOpenedOnboarding(false);
   }, [user]);
 
-  const dismissOnboarding = () => {
-    if (typeof window !== 'undefined' && user) {
-      const onboardingKey = `${ONBOARDING_STORAGE_KEY_PREFIX}:${user.uid}`;
-      window.localStorage.setItem(onboardingKey, 'seen');
-    }
+  const currentUserId = user?.uid ?? null;
 
-    setShowOnboarding(false);
-  };
+  const scopedSpaces = useMemo(
+    () => (currentUserId ? spaces.filter((space) => space.userId === currentUserId) : []),
+    [spaces, currentUserId]
+  );
+  const scopedPlants = useMemo(
+    () => (currentUserId ? plants.filter((plant) => plant.userId === currentUserId) : []),
+    [plants, currentUserId]
+  );
+  const scopedTasks = useMemo(
+    () => (currentUserId ? tasks.filter((task) => task.userId === currentUserId) : []),
+    [tasks, currentUserId]
+  );
+  const scopedNotes = useMemo(
+    () => (currentUserId ? notes.filter((note) => note.userId === currentUserId) : []),
+    [notes, currentUserId]
+  );
 
-  const activePlants = plants.filter((p) => p.status !== 'harvested' && p.status !== 'removed').length;
-  const harvestedPlants = plants.filter((p) => p.status === 'harvested').length;
+  const activePlants = scopedPlants.filter(
+    (plant) => plant.status !== 'harvested' && plant.status !== 'removed'
+  ).length;
+  const harvestedPlants = scopedPlants.filter((plant) => plant.status === 'harvested').length;
 
-  // "Open Issues" / High Priority Tasks
-  const highPriorityTasks = tasks.filter((t) => t.priority === 'high' && t.status === 'pending');
-  const overdueTasks = tasks.filter((t) => t.status === 'pending' && isAfter(new Date(), t.dueDate));
-  const openIssuesCount = new Set([
-    ...highPriorityTasks.map((task) => task.id),
-    ...overdueTasks.map((task) => task.id),
-  ]).size;
+  // "Open Issues" / High Priority or Overdue Pending Tasks
+  const openIssueTasks = useMemo(() => {
+    const now = new Date();
+    return scopedTasks.filter(
+      (task) =>
+        task.status === 'pending' &&
+        (task.priority === 'high' || isAfter(now, new Date(task.dueDate)))
+    );
+  }, [scopedTasks]);
+
+  const openIssuesCount = useMemo(
+    () => new Set(openIssueTasks.map((task) => task.id)).size,
+    [openIssueTasks]
+  );
 
   // Tasks Due (Next 24 Hours)
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const endOfWindow = new Date(startOfToday);
   endOfWindow.setDate(endOfWindow.getDate() + 1);
-  const tasksDueSoon = tasks.filter((task) => {
+  const tasksDueSoon = scopedTasks.filter((task) => {
     if (task.status !== 'pending') {
       return false;
     }
@@ -134,21 +237,99 @@ function DashboardContent() {
 
   // Recent Activity with Description
   const activities = useMemo(() => {
-    const rawActivities = activityService.generateActivities(notes, tasks, plants, spaces, { limit: 5 });
+    const rawActivities = activityService.generateActivities(
+      scopedNotes,
+      scopedTasks,
+      scopedPlants,
+      scopedSpaces,
+      { limit: 5 }
+    );
     return rawActivities.map((activity) => ({
       ...activity,
       description: activityService.formatActivityDescription(activity),
     }));
-  }, [notes, tasks, plants, spaces]);
+  }, [scopedNotes, scopedTasks, scopedPlants, scopedSpaces]);
 
   // Recent Tasks for the list
-  const recentTasks = tasks
+  const recentTasks = scopedTasks
     .filter((t) => t.status === 'pending')
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);
 
   const isLoading = spacesLoading || plantsLoading || tasksLoading || notesLoading;
-  const showSetupGardenCta = !isLoading && spaces.length === 0 && plants.length === 0;
+  const showSetupGardenCta =
+    !isLoading && scopedSpaces.length === 0 && scopedPlants.length === 0;
+
+  useEffect(() => {
+    if (!user || !onboardingState || typeof window === 'undefined') {
+      return;
+    }
+
+    const inferredSteps: OnboardingStepsState = {
+      space: scopedSpaces.length > 0,
+      plant: scopedPlants.length > 0,
+      task: scopedTasks.length > 0,
+    };
+    const mergedSteps: OnboardingStepsState = {
+      space: onboardingState.steps.space || inferredSteps.space,
+      plant: onboardingState.steps.plant || inferredSteps.plant,
+      task: onboardingState.steps.task || inferredSteps.task,
+    };
+    const now = new Date().toISOString();
+    const inferredComplete =
+      onboardingState.completed || areAllOnboardingStepsDone(mergedSteps);
+    const nextState: OnboardingState = {
+      ...onboardingState,
+      steps: mergedSteps,
+      completed: inferredComplete,
+      dismissed: inferredComplete ? true : onboardingState.dismissed,
+      updatedAt: now,
+      completedAt:
+        inferredComplete
+          ? onboardingState.completedAt || now
+          : onboardingState.completedAt,
+    };
+    const changed =
+      onboardingState.steps.space !== nextState.steps.space ||
+      onboardingState.steps.plant !== nextState.steps.plant ||
+      onboardingState.steps.task !== nextState.steps.task ||
+      onboardingState.completed !== nextState.completed ||
+      onboardingState.dismissed !== nextState.dismissed ||
+      onboardingState.completedAt !== nextState.completedAt;
+
+    if (changed) {
+      const onboardingKey = `${ONBOARDING_STORAGE_KEY_PREFIX}:${user.uid}`;
+      window.localStorage.setItem(onboardingKey, JSON.stringify(nextState));
+      setOnboardingState(nextState);
+      if (nextState.completed) {
+        setShowOnboarding(false);
+      }
+      return;
+    }
+
+    if (!hasAutoOpenedOnboarding) {
+      if (!nextState.completed && !nextState.dismissed) {
+        setShowOnboarding(true);
+      }
+      setHasAutoOpenedOnboarding(true);
+    }
+  }, [
+    user,
+    onboardingState,
+    scopedSpaces.length,
+    scopedPlants.length,
+    scopedTasks.length,
+    hasAutoOpenedOnboarding,
+  ]);
+
+  const onboardingProgressCount = onboardingState
+    ? ONBOARDING_STEPS.filter((step) => onboardingState.steps[step]).length
+    : 0;
+  const onboardingIsCompleted = onboardingState?.completed ?? false;
+  const showResumeSetupCta =
+    !isLoading &&
+    !onboardingIsCompleted &&
+    onboardingProgressCount > 0;
 
   const statTileClassName =
     'block rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-gray-700 dark:bg-slate-800';
@@ -161,6 +342,103 @@ function DashboardContent() {
   const closeNoteQuickAction = () => {
     setShowAddNote(false);
     setNoteFormKey((value) => value + 1);
+  };
+
+  const persistOnboardingState = (nextState: OnboardingState) => {
+    if (typeof window !== 'undefined' && user) {
+      const onboardingKey = `${ONBOARDING_STORAGE_KEY_PREFIX}:${user.uid}`;
+      window.localStorage.setItem(onboardingKey, JSON.stringify(nextState));
+    }
+    setOnboardingState(nextState);
+  };
+
+  const markOnboardingStepCompleted = (step: OnboardingStep) => {
+    if (!onboardingState) {
+      return;
+    }
+
+    const nextSteps: OnboardingStepsState = {
+      ...onboardingState.steps,
+      [step]: true,
+    };
+    const now = new Date().toISOString();
+    const isComplete = areAllOnboardingStepsDone(nextSteps);
+
+    const nextState: OnboardingState = {
+      ...onboardingState,
+      steps: nextSteps,
+      completed: isComplete,
+      dismissed: isComplete ? true : onboardingState.dismissed,
+      updatedAt: now,
+      completedAt: isComplete ? onboardingState.completedAt || now : onboardingState.completedAt,
+    };
+
+    persistOnboardingState(nextState);
+    if (isComplete) {
+      setShowOnboarding(false);
+    }
+  };
+
+  const dismissOnboarding = () => {
+    if (!onboardingState) {
+      setShowOnboarding(false);
+      return;
+    }
+
+    const nextState: OnboardingState = {
+      ...onboardingState,
+      dismissed: true,
+      updatedAt: new Date().toISOString(),
+    };
+
+    persistOnboardingState(nextState);
+    setShowOnboarding(false);
+  };
+
+  const completeOnboarding = () => {
+    const now = new Date().toISOString();
+    const nextState: OnboardingState = {
+      version: 1,
+      steps: {
+        space: true,
+        plant: true,
+        task: true,
+      },
+      completed: true,
+      dismissed: true,
+      updatedAt: now,
+      completedAt: now,
+    };
+
+    persistOnboardingState(nextState);
+    setShowOnboarding(false);
+  };
+
+  const openOnboarding = () => {
+    if (onboardingState && onboardingState.dismissed && !onboardingState.completed) {
+      persistOnboardingState({
+        ...onboardingState,
+        dismissed: false,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+    setShowOnboarding(true);
+  };
+
+  const startOnboardingStep = (step: OnboardingStep) => {
+    setShowOnboarding(false);
+
+    if (step === 'space') {
+      setShowAddSpace(true);
+      return;
+    }
+
+    if (step === 'plant') {
+      setShowAddPlant(true);
+      return;
+    }
+
+    setShowAddTask(true);
   };
 
   // Helper for generating activity icon based on type
@@ -199,7 +477,7 @@ function DashboardContent() {
 
   // Handle marking a task as complete from dashboard
   const handleMarkComplete = (taskId: string) => {
-    const task = tasks.find((item) => item.id === taskId);
+    const task = scopedTasks.find((item) => item.id === taskId);
     if (task) {
       setCompletingTask(task);
     }
@@ -236,6 +514,7 @@ function DashboardContent() {
     setCreatingSpaceFromDashboard(true);
     try {
       await createSpace({ ...data, userId: user.uid });
+      markOnboardingStepCompleted('space');
       setShowAddSpace(false);
     } catch (error) {
       console.error('Failed to create space:', error);
@@ -258,7 +537,7 @@ function DashboardContent() {
   };
 
   // Loading skeleton
-  if (isLoading && plants.length === 0 && tasks.length === 0) {
+  if (isLoading && scopedPlants.length === 0 && scopedTasks.length === 0) {
     return (
       <DashboardLayout title="Dashboard">
         <div className="flex-1 space-y-8">
@@ -298,7 +577,7 @@ function DashboardContent() {
                 <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{activePlants}</p>
                 <p className="mt-1 flex items-center text-xs font-medium text-green-600">
                   <TrendingUp className="mr-1 h-3 w-3" />+
-                  {plants.filter((p) => differenceInDays(new Date(), new Date(p.plantedDate)) <= 7).length} this week
+                  {scopedPlants.filter((p) => differenceInDays(new Date(), new Date(p.plantedDate)) <= 7).length} this week
                 </p>
               </div>
               <div className="rounded-lg bg-green-100 p-3 dark:bg-green-900/30">
@@ -372,16 +651,34 @@ function DashboardContent() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={() => setShowAddSpace(true)}
-                  className="bg-emerald-600 text-white hover:bg-emerald-500"
-                >
-                  Set Up Garden
-                </Button>
-                <Button variant="outline" onClick={() => setShowOnboarding(true)}>
+              <Button
+                onClick={() => setShowAddSpace(true)}
+                className="bg-emerald-600 text-white hover:bg-emerald-500"
+              >
+                Set Up Garden
+              </Button>
+                <Button variant="outline" onClick={openOnboarding}>
                   View Setup Steps
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showResumeSetupCta && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                  Resume setup walkthrough
+                </p>
+                <p className="text-sm text-blue-800/80 dark:text-blue-300/90">
+                  {onboardingProgressCount} of {ONBOARDING_STEPS.length} setup steps completed.
+                </p>
+              </div>
+              <Button variant="outline" onClick={openOnboarding}>
+                Resume Setup
+              </Button>
             </div>
           </div>
         )}
@@ -401,8 +698,12 @@ function DashboardContent() {
               <div className="divide-y divide-gray-100 dark:divide-gray-800">
                 {recentTasks.length > 0 ? (
                   recentTasks.map((task) => {
-                    const associatedPlant = task.plantId ? plants.find((plant) => plant.id === task.plantId) : null;
-                    const associatedSpace = task.spaceId ? spaces.find((space) => space.id === task.spaceId) : null;
+                    const associatedPlant = task.plantId
+                      ? scopedPlants.find((plant) => plant.id === task.plantId)
+                      : null;
+                    const associatedSpace = task.spaceId
+                      ? scopedSpaces.find((space) => space.id === task.spaceId)
+                      : null;
 
                     return (
                       <div
@@ -617,7 +918,7 @@ function DashboardContent() {
             </div>
 
             {/* Plant Stage Distribution */}
-            <PlantStageDistribution plants={plants} isLoading={plantsLoading} />
+            <PlantStageDistribution plants={scopedPlants} isLoading={plantsLoading} />
           </div>
         </div>
       </div>
@@ -635,33 +936,84 @@ function DashboardContent() {
           <DialogHeader>
             <DialogTitle>Welcome to Grospace</DialogTitle>
             <DialogDescription>
-              Start with these three steps to set up your garden workflow.
+              Follow this guided setup to get your dashboard fully operational.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-gray-200 p-3 text-center dark:border-gray-700">
-              <Building2 className="mx-auto mb-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <p className="text-sm font-medium">Create a space</p>
-              <p className="mt-1 text-xs text-muted-foreground">Set up tents, beds, or containers.</p>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Step 1: Create a space
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Set up tents, beds, or containers.</p>
+                </div>
+                {onboardingState?.steps.space ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    Done
+                  </span>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => startOnboardingStep('space')}>
+                    Create Space
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="rounded-lg border border-gray-200 p-3 text-center dark:border-gray-700">
-              <Sprout className="mx-auto mb-2 h-5 w-5 text-green-600 dark:text-green-400" />
-              <p className="text-sm font-medium">Add your plants</p>
-              <p className="mt-1 text-xs text-muted-foreground">Track status from seedling to harvest.</p>
+
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Step 2: Add your plants
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Track status from seedling to harvest.
+                  </p>
+                </div>
+                {onboardingState?.steps.plant ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    Done
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startOnboardingStep('plant')}
+                    disabled={scopedSpaces.length === 0}
+                  >
+                    Add Plant
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="rounded-lg border border-gray-200 p-3 text-center dark:border-gray-700">
-              <CheckCircle2 className="mx-auto mb-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <p className="text-sm font-medium">Plan key tasks</p>
-              <p className="mt-1 text-xs text-muted-foreground">Stay on schedule with reminders.</p>
+
+            <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Step 3: Plan key tasks
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Schedule recurring and one-off care work.</p>
+                </div>
+                {onboardingState?.steps.task ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    Done
+                  </span>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => startOnboardingStep('task')}>
+                    Add Task
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={dismissOnboarding}>
-              Skip
+              Close For Now
             </Button>
-            <Button onClick={dismissOnboarding}>Let&apos;s grow</Button>
+            <Button onClick={completeOnboarding}>Complete setup</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -669,8 +1021,8 @@ function DashboardContent() {
       {/* Task Completion Dialog */}
       <TaskCompletionDialog
         task={completingTask}
-        spaces={spaces}
-        plants={plants}
+        spaces={scopedSpaces}
+        plants={scopedPlants}
         open={!!completingTask}
         onOpenChange={(open) => {
           if (!open) {
@@ -690,9 +1042,10 @@ function DashboardContent() {
             <DialogDescription>Add a new plant to your garden.</DialogDescription>
           </DialogHeader>
           <PlantForm
-            spaces={spaces}
+            spaces={scopedSpaces}
             onSuccess={() => {
               setShowAddPlant(false);
+              markOnboardingStepCompleted('plant');
               loadPlants();
             }}
             onCancel={() => setShowAddPlant(false)}
@@ -746,8 +1099,8 @@ function DashboardContent() {
           </DialogHeader>
           <TaskForm
             key={taskFormKey}
-            spaces={spaces}
-            plants={plants}
+            spaces={scopedSpaces}
+            plants={scopedPlants}
             onSubmit={async (taskData) => {
               if (creatingTaskFromDashboard) {
                 return;
@@ -756,6 +1109,7 @@ function DashboardContent() {
               setCreatingTaskFromDashboard(true);
               try {
                 await createTask(taskData);
+                markOnboardingStepCompleted('task');
                 closeTaskQuickAction();
                 await loadTasks();
               } catch (error) {

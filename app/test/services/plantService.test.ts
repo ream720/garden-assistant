@@ -113,18 +113,33 @@ describe('PlantService', () => {
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
-    it('should validate required variety field', async () => {
+    it('should allow empty variety values', async () => {
+      const mockPlant: Plant = {
+        id: 'plant-empty-variety',
+        ...validPlantData,
+        variety: '',
+        status: 'seedling',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockSpaceGetById.mockResolvedValue({ data: mockSpace });
+      mockCreate.mockResolvedValue({ data: mockPlant });
+      mockSpaceUpdatePlantCount.mockResolvedValue({ data: mockSpace });
+
       const result = await service.createPlant({
         ...validPlantData,
         variety: '',
       });
 
-      expect(result.data).toBeUndefined();
-      expect(result.error).toEqual({
-        code: 'VALIDATION_ERROR',
-        message: 'Plant variety is required',
-      });
-      expect(mockCreate).not.toHaveBeenCalled();
+      expect(result.error).toBeUndefined();
+      expect(result.data).toEqual(mockPlant);
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variety: '',
+          status: 'seedling',
+        })
+      );
     });
 
     it('should validate space ownership', async () => {

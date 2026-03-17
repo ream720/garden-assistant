@@ -14,6 +14,7 @@ import { TaskCard } from './TaskCard';
 import { FeatureHelpPopover } from '../shared/FeatureHelpPopover';
 import type { Task, GrowSpace, Plant, TaskPriority } from '../../lib/types';
 import { cn } from '../../lib/utils';
+import { formatPlantDisplayName } from '../../lib/utils/plantDisplay';
 
 interface TaskListProps {
   tasks: Task[];
@@ -190,7 +191,7 @@ export function TaskList({
         case 'plant':
           if (task.plantId) {
             const plant = plants.find((p) => p.id === task.plantId);
-            groupKey = plant ? `${plant.name} (${plant.variety})` : 'Unknown Plant';
+            groupKey = plant ? formatPlantDisplayName(plant) : 'Unknown Plant';
           } else {
             groupKey = 'No Plant';
           }
@@ -410,7 +411,7 @@ export function TaskList({
                     <SelectItem value="none">No Plant</SelectItem>
                     {plants.map((plant) => (
                       <SelectItem key={plant.id} value={plant.id}>
-                        {plant.name} ({plant.variety})
+                        {formatPlantDisplayName(plant)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -547,7 +548,6 @@ export function TaskList({
     </div>
   );
 }
-
 
 
 

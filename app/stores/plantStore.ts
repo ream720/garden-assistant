@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { Plant } from '../lib/types';
 import { plantService } from '../lib/services/plantService';
 import { noteService } from '../lib/services/noteService';
+import { formatPlantDisplayName } from '../lib/utils/plantDisplay';
 import { useAuthStore } from './authStore';
 
 export interface HarvestPlantOptions {
@@ -103,7 +104,7 @@ export const usePlantStore = create<PlantState>()(
           try {
             await noteService.create(
               {
-                content: `Plant created: ${newPlant.name} (${newPlant.variety})`,
+                content: `Plant created: ${formatPlantDisplayName(newPlant)}`,
                 category: 'milestone',
                 plantId: newPlant.id,
                 spaceId: newPlant.spaceId,

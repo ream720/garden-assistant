@@ -1,5 +1,10 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 
+const NOTE_PHOTO_BUFFER = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
+  'base64'
+);
+
 const openCreateNoteDialog = async (page: Page): Promise<Locator> => {
   await page.getByRole('button', { name: 'Add Note' }).click();
   const dialog = page.getByRole('dialog');
@@ -68,6 +73,28 @@ test.describe('Events Notes', () => {
   test('can create and delete a note from Events', async ({ page }) => {
     const content = `E2E Note ${Date.now()}`;
     await createNote(page, content);
+    await deleteNoteByContent(page, content);
+  });
+
+  test('can upload a photo when creating a note', async ({ page }) => {
+    const content = `E2E Note With Photo ${Date.now()}`;
+    const dialog = await openCreateNoteDialog(page);
+
+    await dialog.getByLabel('Note Content').fill(content);
+    await chooseSpaceForNote(dialog, page);
+    await dialog.locator('input[type="file"]').setInputFiles({
+      name: 'e2e-note-photo.png',
+      mimeType: 'image/png',
+      buffer: NOTE_PHOTO_BUFFER,
+    });
+    await expect(dialog.getByText('e2e-note-photo.png')).toBeVisible();
+
+    await dialog.getByRole('button', { name: 'Save Note' }).click();
+    await expect(page.getByText(content)).toBeVisible({ timeout: 15000 });
+
+    await page.getByText(content).first().click();
+    await expect(page.getByText('Photos (1)')).toBeVisible({ timeout: 15000 });
+
     await deleteNoteByContent(page, content);
   });
 

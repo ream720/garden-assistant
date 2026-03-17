@@ -11,36 +11,51 @@ export class TaskService extends BaseService<Task> {
    * Get all tasks for a user
    */
   async getUserTasks(userId: string): Promise<ServiceResult<Task[]>> {
-    return this.list({
+    const result = await this.list({
       where: [{ field: 'userId', operator: '==', value: userId }],
-      orderBy: [{ field: 'dueDate', direction: 'asc' }]
     });
+
+    if (result.data) {
+      result.data.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    }
+
+    return result;
   }
 
   /**
    * Get tasks for a specific space
    */
   async getSpaceTasks(spaceId: string, userId: string): Promise<ServiceResult<Task[]>> {
-    return this.list({
+    const result = await this.list({
       where: [
         { field: 'userId', operator: '==', value: userId },
         { field: 'spaceId', operator: '==', value: spaceId }
       ],
-      orderBy: [{ field: 'dueDate', direction: 'asc' }]
     });
+
+    if (result.data) {
+      result.data.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    }
+
+    return result;
   }
 
   /**
    * Get tasks for a specific plant
    */
   async getPlantTasks(plantId: string, userId: string): Promise<ServiceResult<Task[]>> {
-    return this.list({
+    const result = await this.list({
       where: [
         { field: 'userId', operator: '==', value: userId },
         { field: 'plantId', operator: '==', value: plantId }
       ],
-      orderBy: [{ field: 'dueDate', direction: 'asc' }]
     });
+
+    if (result.data) {
+      result.data.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+    }
+
+    return result;
   }
 
   /**

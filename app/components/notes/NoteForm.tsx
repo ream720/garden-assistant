@@ -14,6 +14,7 @@ import { FeatureHelpPopover } from '../shared/FeatureHelpPopover';
 import { NOTE_CATEGORIES, type NoteCategory } from '../../lib/types/note';
 import { useSpaceStore } from '../../stores/spaceStore';
 import { usePlantStore } from '../../stores/plantStore';
+import { formatPlantDisplayName } from '../../lib/utils/plantDisplay';
 
 const noteFormSchema = z.object({
   content: z.string().min(1, 'Content is required').max(2000, 'Content must be less than 2000 characters'),
@@ -298,7 +299,7 @@ export function NoteForm({
                   <SelectItem value="none">No specific plant</SelectItem>
                   {availablePlants.map((plant) => (
                     <SelectItem key={plant.id} value={plant.id}>
-                      {plant.name} ({plant.variety})
+                      {formatPlantDisplayName(plant)}
                     </SelectItem>
                   ))}
                 </SelectContent>

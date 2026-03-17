@@ -20,6 +20,8 @@ This folder is the canonical home for engineering planning and launch-readiness 
 - MVP audit/test gate: [`MVP_TEST_GATE.md`](./MVP_TEST_GATE.md)
 - E2E plan: [`E2E_TESTING.md`](./E2E_TESTING.md)
 - E2E emulator runbook: [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md)
+- Firebase auth audit: [`FIREBASE_AUTH_AUDIT.md`](./FIREBASE_AUTH_AUDIT.md)
+- Pre-invite shakedown log: [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md)
 - Test summary: [`TEST_SUMMARY.md`](./TEST_SUMMARY.md)
 - Events parity tracker: [`EVENTS_PARITY_TRACKER.md`](./EVENTS_PARITY_TRACKER.md)
 - Monetization strategy audit: [`MONETIZATION_STRATEGY_AUDIT.md`](./MONETIZATION_STRATEGY_AUDIT.md)

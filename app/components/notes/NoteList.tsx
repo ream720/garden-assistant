@@ -15,6 +15,7 @@ import { useSpaceStore } from '../../stores/spaceStore';
 import { usePlantStore } from '../../stores/plantStore';
 import { useAuthStore } from '../../stores/authStore';
 import { NOTE_CATEGORIES, type Note, type NoteCategory } from '../../lib/types/note';
+import { formatPlantDisplayName } from '../../lib/utils/plantDisplay';
 import { toast } from 'sonner';
 
 interface NoteListProps {
@@ -206,7 +207,7 @@ export function NoteList({
   const getPlantName = (plantId?: string) => {
     if (!plantId) return undefined;
     const plant = plants.find((item) => item.id === plantId);
-    return plant ? `${plant.name} (${plant.variety})` : undefined;
+    return plant ? formatPlantDisplayName(plant) : undefined;
   };
 
   const availablePlantsForFilter = (effectiveSpaceId || selectedSpace !== 'all')
@@ -374,7 +375,7 @@ export function NoteList({
                 <SelectItem value="all">All plants</SelectItem>
                 {availablePlantsForFilter.map((plant) => (
                   <SelectItem key={plant.id} value={plant.id}>
-                    {plant.name} ({plant.variety})
+                    {formatPlantDisplayName(plant)}
                   </SelectItem>
                 ))}
               </SelectContent>

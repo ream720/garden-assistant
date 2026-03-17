@@ -34,7 +34,12 @@ export function DashboardLayout({ children, title = 'Dashboard' }: DashboardLayo
                         <div className="lg:hidden">
                             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                                 <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="-ml-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="-ml-2"
+                                        aria-label="Open menu"
+                                    >
                                         <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                                     </Button>
                                 </SheetTrigger>
