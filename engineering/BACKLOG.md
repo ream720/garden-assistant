@@ -1,6 +1,6 @@
 # Engineering Backlog Index
 
-Last updated: March 17, 2026 (post variety-optional + events-default-notes update)
+Last updated: March 21, 2026 (events focused-pass findings added)
 
 Use this file as the control-plane backlog. Detailed work lives in focused docs linked below.
 
@@ -20,6 +20,13 @@ Recent milestone (completed):
 - [ ] Define implementation plan for Plants/Spaces Notes/Tasks split-layout rework. See [`MVP_LAUNCH_BACKLOG.md`](./MVP_LAUNCH_BACKLOG.md).
 - [ ] Visually align Notes and Tasks layouts for consistent field placement and flow. See [`MVP_LAUNCH_BACKLOG.md`](./MVP_LAUNCH_BACKLOG.md).
 - [ ] Post-MVP lint hardening (`react/no-unescaped-entities` re-enable + escape cleanup). See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+
+Events focused-pass findings (March 21, 2026):
+
+- [ ] Deduplicate Events task-filter predicates to remove drift risk between list filtering and status counts; add parity tests for context/scope/status/priority combinations. Primary touchpoint: `app/routes/events.tsx`.
+- [ ] Add an in-flight guard around recurring occurrence selection/completion flows to prevent duplicate create/completion paths under rapid interaction. Primary touchpoints: `app/routes/events.tsx`, `app/lib/services/taskService.ts`.
+- [ ] Expand Events route test coverage for currently weak paths: Notes CRUD dialogs, Notes/Tasks view-toggle URL sync, mobile details sheet behavior, photo modal open/close, and cleanup effect assertions. Primary touchpoint: `app/test/routes/events.test.tsx`.
+- [ ] Plan incremental Events decomposition after gate-critical fixes: extract URL filter codec/state transitions, split filter/list panes into components, and move controller logic toward reducer-driven state handling.
 
 Recently completed (March 16, 2026):
 

@@ -50,7 +50,7 @@ test.describe('Events Notes', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/events?type=notes');
     await expect(page).toHaveURL(/\/events\?.*type=notes/);
-    await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Add Note' })).toBeVisible({
       timeout: 10000,
     });
   });

@@ -98,7 +98,7 @@ test.describe('Navigation & Routing', () => {
       await page.locator('nav').getByRole('link', { name: 'Events' }).click();
       await expect(page).toHaveURL(/\/events/);
       await expect(page).toHaveTitle(/Events/);
-      await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible({
+      await expect(page.getByRole('button', { name: 'Add Note' })).toBeVisible({
         timeout: 10000,
       });
     });
@@ -130,7 +130,7 @@ test.describe('Navigation & Routing', () => {
     test('legacy /notes route redirects to Events notes view', async ({ page }) => {
       await page.goto('/notes');
       await expect(page).toHaveURL(/\/events\?.*type=notes/);
-      await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible({
+      await expect(page.getByRole('button', { name: 'Add Note' })).toBeVisible({
         timeout: 10000,
       });
     });
@@ -138,7 +138,7 @@ test.describe('Navigation & Routing', () => {
     test('legacy /tasks route redirects to Events tasks view', async ({ page }) => {
       await page.goto('/tasks');
       await expect(page).toHaveURL(/\/events\?.*type=tasks/);
-      await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible({
+      await expect(page.getByRole('button', { name: 'Add Task' })).toBeVisible({
         timeout: 10000,
       });
     });

@@ -78,7 +78,7 @@ test.describe('Events Tasks', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/events?type=tasks');
     await expect(page).toHaveURL(/\/events\?.*type=tasks/);
-    await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Add Task' })).toBeVisible({
       timeout: 10000,
     });
   });

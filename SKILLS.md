@@ -36,6 +36,14 @@ This document tracks project-scoped skills installed in [`./.agents/skills/`](./
 - Source: `vercel-labs/agent-skills`
 - Use when: writing/reviewing/refactoring React or Next.js for performance, bundle size, rendering efficiency, and data-fetching quality.
 
+## Video Generation Skills
+
+### `gemini-veo-video`
+
+- Path: [`./.agents/skills/gemini-veo-video/SKILL.md`](./.agents/skills/gemini-veo-video/SKILL.md)
+- Source: `project-local`
+- Use when: generating or extending Veo videos via Gemini API, choosing Veo model/parameter combinations, building prompt+audio direction, and handling long-running operation polling/downloading.
+
 ## Notes
 
 - Installed skill versions/hashes are tracked in [`skills-lock.json`](./skills-lock.json).

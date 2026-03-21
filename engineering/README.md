@@ -27,6 +27,10 @@ This folder is the canonical home for engineering planning and launch-readiness 
 - Monetization strategy audit: [`MONETIZATION_STRATEGY_AUDIT.md`](./MONETIZATION_STRATEGY_AUDIT.md)
 - Monetization implementation plan: [`MONETIZATION_IMPLEMENTATION_PLAN.md`](./MONETIZATION_IMPLEMENTATION_PLAN.md)
 
+## Runbooks
+
+- Video marketing generation (Veo): [`VIDEO_MARKETING_RUNBOOK.md`](./VIDEO_MARKETING_RUNBOOK.md)
+
 ## Root Planning Docs
 
 Root-level planning docs were removed pre-launch. Treat files in `/engineering` as source-of-truth and keep all future planning updates here.

@@ -37,8 +37,17 @@ vi.mock('react-router', async () => {
 });
 
 vi.mock('../../components/dashboard/DashboardLayout', () => ({
-  DashboardLayout: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
+  DashboardLayout: ({
+    children,
+    title,
+  }: {
+    children: ReactNode;
+    title?: string;
+  }) => (
+    <div>
+      {title ? <h1>{title}</h1> : null}
+      {children}
+    </div>
   ),
 }));
 
@@ -256,12 +265,13 @@ describe('Events route', () => {
     render(<EventsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add Note' })).toBeInTheDocument();
     });
     expect(
       screen.getAllByText('Default notes view entry').length
     ).toBeGreaterThan(0);
-    expect(screen.queryByRole('heading', { name: 'Tasks' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Task' })).not.toBeInTheDocument();
   });
 
   it('shows recurring completed task details including timestamps and context', async () => {
@@ -293,6 +303,8 @@ describe('Events route', () => {
     await waitFor(() =>
       expect(screen.getAllByText('Feed tomatoes').length).toBeGreaterThan(0)
     );
+    expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Task' })).toBeInTheDocument();
     expect(screen.getAllByText('Completed').length).toBeGreaterThan(0);
     expect(
       screen.getAllByText('Every 2 weeks until Mar 31, 2026').length

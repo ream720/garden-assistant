@@ -2357,7 +2357,7 @@ function EventsContent() {
     );
   };
   return (
-    <DashboardLayout title="">
+    <DashboardLayout title="Events">
       <div className="-m-4 flex h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-[#0B1120] font-sans text-slate-200 md:-m-8">
         <div className="flex w-full flex-col border-r border-[#1e293b] bg-[#0f172a] transition-all duration-300 lg:w-1/2">
           <div className="p-6 pb-2">
@@ -2382,16 +2382,7 @@ function EventsContent() {
 
             {activeView === 'tasks' ? (
               <>
-                <div className="mb-6 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-white">Tasks</h1>
-                    <Badge
-                      variant="secondary"
-                      className="border-transparent bg-slate-800 px-3 text-slate-300"
-                    >
-                      {filteredTasks.length}
-                    </Badge>
-                  </div>
+                <div className="mb-6 flex justify-end">
                   <Button
                     onClick={handleCreateTaskClick}
                     className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"
@@ -2409,16 +2400,7 @@ function EventsContent() {
               </>
             ) : (
               <>
-                <div className="mb-6 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-white">Notes</h1>
-                    <Badge
-                      variant="secondary"
-                      className="border-transparent bg-slate-800 px-3 text-slate-300"
-                    >
-                      {filteredNotes.length}
-                    </Badge>
-                  </div>
+                <div className="mb-6 flex justify-end">
                   <Button
                     onClick={() => setCreateNoteOpen(true)}
                     className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"

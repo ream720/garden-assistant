@@ -33,14 +33,14 @@ test.describe('Seed Account Smoke', () => {
 
     await page.goto('/events?type=notes');
     await expect(page).toHaveURL(/\/events\?.*type=notes/);
-    await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Add Note' })).toBeVisible({
       timeout: 10000,
     });
     await expect(page.getByText('No notes found')).not.toBeVisible();
 
     await page.goto('/events?type=tasks');
     await expect(page).toHaveURL(/\/events\?.*type=tasks/);
-    await expect(page.getByRole('heading', { name: 'Tasks' })).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Add Task' })).toBeVisible({
       timeout: 10000,
     });
     await expect(page.getByText('No tasks match your filters.')).not.toBeVisible();
