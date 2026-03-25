@@ -10,10 +10,9 @@ vi.mock('../../lib/firebase/config', () => ({
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
   doc: vi.fn(),
-  addDoc: vi.fn(),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
-  updateDoc: vi.fn(),
+  setDoc: vi.fn(),
   deleteDoc: vi.fn(),
   query: vi.fn(),
   where: vi.fn(),
@@ -118,16 +117,16 @@ describe('NoteService', () => {
     it('should get a note by id', async () => {
       const getByIdSpy = vi.spyOn(noteService, 'getById').mockResolvedValue(mockNote);
 
-      const result = await noteService.getById(mockNoteId);
+      const result = await noteService.getById(mockNoteId, mockUserId);
 
-      expect(getByIdSpy).toHaveBeenCalledWith(mockNoteId);
+      expect(getByIdSpy).toHaveBeenCalledWith(mockNoteId, mockUserId);
       expect(result).toEqual(mockNote);
     });
 
     it('should return null if note does not exist', async () => {
       vi.spyOn(noteService, 'getById').mockResolvedValue(null);
 
-      const result = await noteService.getById(mockNoteId);
+      const result = await noteService.getById(mockNoteId, mockUserId);
 
       expect(result).toBeNull();
     });
@@ -135,7 +134,7 @@ describe('NoteService', () => {
     it('should handle get errors', async () => {
       vi.spyOn(noteService, 'getById').mockRejectedValue(new Error('Failed to get note'));
 
-      await expect(noteService.getById(mockNoteId)).rejects.toThrow('Failed to get note');
+      await expect(noteService.getById(mockNoteId, mockUserId)).rejects.toThrow('Failed to get note');
     });
   });
 
@@ -155,9 +154,9 @@ describe('NoteService', () => {
 
       const updateSpy = vi.spyOn(noteService, 'update').mockResolvedValue(mockUpdatedNote);
 
-      const result = await noteService.update(mockNoteId, updateData);
+      const result = await noteService.update(mockNoteId, updateData, mockUserId);
 
-      expect(updateSpy).toHaveBeenCalledWith(mockNoteId, updateData);
+      expect(updateSpy).toHaveBeenCalledWith(mockNoteId, updateData, mockUserId);
       expect(result).toEqual(mockUpdatedNote);
       expect(result.content).toBe('Updated content');
       expect(result.category).toBe('feeding');
@@ -170,7 +169,7 @@ describe('NoteService', () => {
 
       vi.spyOn(noteService, 'update').mockRejectedValue(new Error('Failed to update note'));
 
-      await expect(noteService.update(mockNoteId, updateData)).rejects.toThrow('Failed to update note');
+      await expect(noteService.update(mockNoteId, updateData, mockUserId)).rejects.toThrow('Failed to update note');
     });
   });
 
@@ -178,23 +177,23 @@ describe('NoteService', () => {
     it('should delete a note without photos', async () => {
       const deleteSpy = vi.spyOn(noteService, 'delete').mockResolvedValue(undefined);
 
-      await noteService.delete(mockNoteId);
+      await noteService.delete(mockNoteId, mockUserId);
 
-      expect(deleteSpy).toHaveBeenCalledWith(mockNoteId);
+      expect(deleteSpy).toHaveBeenCalledWith(mockNoteId, mockUserId);
     });
 
     it('should delete a note with photos', async () => {
       const deleteSpy = vi.spyOn(noteService, 'delete').mockResolvedValue(undefined);
 
-      await noteService.delete(mockNoteId);
+      await noteService.delete(mockNoteId, mockUserId);
 
-      expect(deleteSpy).toHaveBeenCalledWith(mockNoteId);
+      expect(deleteSpy).toHaveBeenCalledWith(mockNoteId, mockUserId);
     });
 
     it('should handle delete errors', async () => {
       vi.spyOn(noteService, 'delete').mockRejectedValue(new Error('Failed to delete note'));
 
-      await expect(noteService.delete(mockNoteId)).rejects.toThrow('Failed to delete note');
+      await expect(noteService.delete(mockNoteId, mockUserId)).rejects.toThrow('Failed to delete note');
     });
   });
 

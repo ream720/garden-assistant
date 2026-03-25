@@ -1,31 +1,126 @@
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDocs, 
-  getDoc, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
   onSnapshot,
+  orderBy,
+  query,
+  setDoc,
   Timestamp,
-  QueryConstraint
+  where,
+  type DocumentData,
+  type QueryConstraint,
 } from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
-  deleteObject 
-} from 'firebase/storage';
-import { db as firestore, storage } from '../firebase/config';
-import type { Note, CreateNoteData, UpdateNoteData, NoteFilters } from '../types/note';
+import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { storage } from '../firebase/config';
+import {
+  getUserScopedCollectionRefs,
+  getUserScopedDocumentRefs,
+  mergeDocumentsById,
+} from '../firebase/firestorePaths';
+import type { CreateNoteData, Note, NoteFilters, UpdateNoteData } from '../types/note';
 
 export class NoteService {
   private collectionName = 'notes';
 
+  private toDate(value: unknown): Date {
+    if (value instanceof Date) {
+      return value;
+    }
+
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      typeof (value as { toDate?: unknown }).toDate === 'function'
+    ) {
+      return (value as { toDate: () => Date }).toDate();
+    }
+
+    return new Date(value as string | number | Date);
+  }
+
+  private mapNote(id: string, data: DocumentData): Note {
+    return {
+      id,
+      ...data,
+      timestamp: this.toDate(data.timestamp),
+      createdAt: this.toDate(data.createdAt),
+      updatedAt: this.toDate(data.updatedAt),
+    } as Note;
+  }
+
+  private sortByTimestamp(notes: Note[]): Note[] {
+    return [...notes].sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime());
+  }
+
+  private applyClientFilters(notes: Note[], filters?: NoteFilters): Note[] {
+    let filtered = [...notes];
+
+    if (filters?.plantId) {
+      filtered = filtered.filter((note) => note.plantId === filters.plantId);
+    }
+
+    if (filters?.spaceId) {
+      filtered = filtered.filter((note) => note.spaceId === filters.spaceId);
+    }
+
+    if (filters?.category) {
+      filtered = filtered.filter((note) => note.category === filters.category);
+    }
+
+    if (filters?.startDate) {
+      filtered = filtered.filter((note) => note.timestamp >= filters.startDate!);
+    }
+
+    if (filters?.endDate) {
+      filtered = filtered.filter((note) => note.timestamp <= filters.endDate!);
+    }
+
+    if (filters?.searchTerm) {
+      const searchTerm = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter((note) => note.content.toLowerCase().includes(searchTerm));
+    }
+
+    if (filters?.limit) {
+      filtered = filtered.slice(0, filters.limit);
+    }
+
+    return filtered;
+  }
+
+  private buildSubscribeConstraints(
+    filters?: NoteFilters,
+    userId?: string
+  ): QueryConstraint[] {
+    const constraints: QueryConstraint[] = [];
+
+    if (userId) {
+      constraints.push(where('userId', '==', userId));
+    }
+
+    if (filters?.plantId) {
+      constraints.push(where('plantId', '==', filters.plantId));
+    }
+
+    if (filters?.spaceId) {
+      constraints.push(where('spaceId', '==', filters.spaceId));
+    }
+
+    if (filters?.category) {
+      constraints.push(where('category', '==', filters.category));
+    }
+
+    constraints.push(orderBy('timestamp', 'desc'));
+
+    return constraints;
+  }
+
   async create(data: CreateNoteData, userId: string): Promise<Note> {
+    if (!userId) {
+      throw new Error('User ID is required to create a note');
+    }
+
     try {
       // Upload photos first if any
       const photoUrls: string[] = [];
@@ -48,48 +143,64 @@ export class NoteService {
         updatedAt: Timestamp.now(),
       };
 
-      const docRef = await addDoc(collection(firestore, this.collectionName), noteData);
-      
-      return {
-        id: docRef.id,
-        ...noteData,
-        timestamp: noteData.timestamp.toDate(),
-        createdAt: noteData.createdAt.toDate(),
-        updatedAt: noteData.updatedAt.toDate(),
-      } as Note;
+      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+      const primaryDocRef = doc(primary);
+
+      await setDoc(primaryDocRef, noteData);
+
+      if (secondary) {
+        await setDoc(doc(secondary, primaryDocRef.id), noteData);
+      }
+
+      return this.mapNote(primaryDocRef.id, noteData);
     } catch (error) {
       console.error('Error creating note:', error);
       throw new Error('Failed to create note');
     }
   }
 
-  async getById(id: string): Promise<Note | null> {
+  async getById(id: string, userId: string): Promise<Note | null> {
+    if (!userId) {
+      throw new Error('User ID is required to fetch a note');
+    }
+
     try {
-      const docRef = doc(firestore, this.collectionName, id);
-      const docSnap = await getDoc(docRef);
-      
-      if (!docSnap.exists()) {
+      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+      const primarySnapshot = await getDoc(primary);
+
+      if (primarySnapshot.exists()) {
+        return this.mapNote(primarySnapshot.id, primarySnapshot.data());
+      }
+
+      if (!secondary) {
         return null;
       }
 
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        ...data,
-        timestamp: data.timestamp.toDate(),
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Note;
+      const secondarySnapshot = await getDoc(secondary);
+      if (!secondarySnapshot.exists()) {
+        return null;
+      }
+
+      return this.mapNote(secondarySnapshot.id, secondarySnapshot.data());
     } catch (error) {
       console.error('Error getting note:', error);
       throw new Error('Failed to get note');
     }
   }
 
-  async update(id: string, updates: UpdateNoteData): Promise<Note> {
+  async update(id: string, updates: UpdateNoteData, userId: string): Promise<Note> {
+    if (!userId) {
+      throw new Error('User ID is required to update a note');
+    }
+
     try {
-      const docRef = doc(firestore, this.collectionName, id);
-      
+      const currentNote = await this.getById(id, userId);
+      if (!currentNote) {
+        throw new Error('Note not found');
+      }
+
+      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+
       const updateData: Record<string, unknown> = {
         updatedAt: Timestamp.now(),
       };
@@ -114,13 +225,17 @@ export class NoteService {
         updateData.timestamp = updates.timestamp ? Timestamp.fromDate(updates.timestamp) : null;
       }
 
-      await updateDoc(docRef, updateData);
-      
-      const updatedNote = await this.getById(id);
+      await setDoc(primary, updateData, { merge: true });
+
+      if (secondary) {
+        await setDoc(secondary, updateData, { merge: true });
+      }
+
+      const updatedNote = await this.getById(id, userId);
       if (!updatedNote) {
         throw new Error('Note not found after update');
       }
-      
+
       return updatedNote;
     } catch (error) {
       console.error('Error updating note:', error);
@@ -128,10 +243,14 @@ export class NoteService {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, userId: string): Promise<void> {
+    if (!userId) {
+      throw new Error('User ID is required to delete a note');
+    }
+
     try {
       // Get the note first to delete associated photos
-      const note = await this.getById(id);
+      const note = await this.getById(id, userId);
       if (note && note.photos.length > 0) {
         // Delete photos from storage
         for (const photoUrl of note.photos) {
@@ -145,8 +264,12 @@ export class NoteService {
         }
       }
 
-      const docRef = doc(firestore, this.collectionName, id);
-      await deleteDoc(docRef);
+      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+      await deleteDoc(primary);
+
+      if (secondary) {
+        await deleteDoc(secondary);
+      }
     } catch (error) {
       console.error('Error deleting note:', error);
       throw new Error('Failed to delete note');
@@ -154,64 +277,33 @@ export class NoteService {
   }
 
   async list(userId: string, filters?: NoteFilters): Promise<Note[]> {
+    if (!userId) {
+      throw new Error('User ID is required to list notes');
+    }
+
     try {
-      // Simple query without orderBy to avoid index requirement
-      // We'll sort client-side for now
-      let q = query(
-        collection(firestore, this.collectionName),
-        where('userId', '==', userId)
+      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+
+      const [primarySnapshot, secondarySnapshot] = await Promise.all([
+        getDocs(primary),
+        secondary
+          ? getDocs(query(secondary, where('userId', '==', userId)))
+          : Promise.resolve(null),
+      ]);
+
+      const primaryNotes = primarySnapshot.docs.map((noteDoc) =>
+        this.mapNote(noteDoc.id, noteDoc.data())
       );
 
-      const querySnapshot = await getDocs(q);
-      
-      let notes = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          timestamp: data.timestamp.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
-        } as Note;
-      });
+      const mergedNotes = secondarySnapshot
+        ? mergeDocumentsById(
+            primaryNotes,
+            secondarySnapshot.docs.map((noteDoc) => this.mapNote(noteDoc.id, noteDoc.data()))
+          )
+        : primaryNotes;
 
-      // Sort by timestamp descending (client-side)
-      notes.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-      // Apply client-side filters
-      if (filters?.plantId) {
-        notes = notes.filter(note => note.plantId === filters.plantId);
-      }
-
-      if (filters?.spaceId) {
-        notes = notes.filter(note => note.spaceId === filters.spaceId);
-      }
-
-      if (filters?.category) {
-        notes = notes.filter(note => note.category === filters.category);
-      }
-
-      if (filters?.startDate) {
-        notes = notes.filter(note => note.timestamp >= filters.startDate!);
-      }
-
-      if (filters?.endDate) {
-        notes = notes.filter(note => note.timestamp <= filters.endDate!);
-      }
-
-      if (filters?.searchTerm) {
-        const searchTerm = filters.searchTerm.toLowerCase();
-        notes = notes.filter(note => 
-          note.content.toLowerCase().includes(searchTerm)
-        );
-      }
-
-      // Apply limit if specified
-      if (filters?.limit) {
-        notes = notes.slice(0, filters.limit);
-      }
-
-      return notes;
+      const sortedNotes = this.sortByTimestamp(mergedNotes);
+      return this.applyClientFilters(sortedNotes, filters);
     } catch (error) {
       console.error('Error listing notes:', error);
       throw new Error('Failed to list notes');
@@ -219,62 +311,73 @@ export class NoteService {
   }
 
   subscribe(
-    userId: string, 
-    callback: (notes: Note[]) => void, 
+    userId: string,
+    callback: (notes: Note[]) => void,
     filters?: NoteFilters
   ): () => void {
+    if (!userId) {
+      console.error('User ID is required for notes subscription');
+      return () => {};
+    }
+
     try {
-      const constraints: QueryConstraint[] = [
-        where('userId', '==', userId),
-        orderBy('timestamp', 'desc')
-      ];
+      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
 
-      if (filters?.plantId) {
-        constraints.splice(1, 0, where('plantId', '==', filters.plantId));
-      }
+      const primaryQuery = query(
+        primary,
+        ...this.buildSubscribeConstraints(filters)
+      );
 
-      if (filters?.spaceId) {
-        constraints.splice(1, 0, where('spaceId', '==', filters.spaceId));
-      }
+      let primaryNotes: Note[] = [];
+      let secondaryNotes: Note[] = [];
 
-      if (filters?.category) {
-        constraints.splice(1, 0, where('category', '==', filters.category));
-      }
+      const emitNotes = () => {
+        const mergedNotes = secondary
+          ? mergeDocumentsById(primaryNotes, secondaryNotes)
+          : primaryNotes;
+        const sortedNotes = this.sortByTimestamp(mergedNotes);
+        callback(this.applyClientFilters(sortedNotes, filters));
+      };
 
-      const q = query(collection(firestore, this.collectionName), ...constraints);
-      
-      return onSnapshot(q, (querySnapshot) => {
-        let notes = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            timestamp: data.timestamp.toDate(),
-            createdAt: data.createdAt.toDate(),
-            updatedAt: data.updatedAt.toDate(),
-          } as Note;
-        });
-
-        // Apply client-side filters
-        if (filters?.startDate) {
-          notes = notes.filter(note => note.timestamp >= filters.startDate!);
-        }
-
-        if (filters?.endDate) {
-          notes = notes.filter(note => note.timestamp <= filters.endDate!);
-        }
-
-        if (filters?.searchTerm) {
-          const searchTerm = filters.searchTerm.toLowerCase();
-          notes = notes.filter(note => 
-            note.content.toLowerCase().includes(searchTerm)
+      const unsubscribePrimary = onSnapshot(
+        primaryQuery,
+        (querySnapshot) => {
+          primaryNotes = querySnapshot.docs.map((noteDoc) =>
+            this.mapNote(noteDoc.id, noteDoc.data())
           );
+          emitNotes();
+        },
+        (error) => {
+          console.error('Error in notes subscription:', error);
         }
+      );
 
-        callback(notes);
-      }, (error) => {
-        console.error('Error in notes subscription:', error);
-      });
+      if (!secondary) {
+        return unsubscribePrimary;
+      }
+
+      const secondaryQuery = query(
+        secondary,
+        ...this.buildSubscribeConstraints(filters, userId)
+      );
+
+      const unsubscribeSecondary = onSnapshot(
+        secondaryQuery,
+        (querySnapshot) => {
+          secondaryNotes = querySnapshot.docs.map((noteDoc) =>
+            this.mapNote(noteDoc.id, noteDoc.data())
+          );
+          emitNotes();
+        },
+        (error) => {
+          console.error('Error in legacy notes subscription:', error);
+        }
+      );
+
+      return () => {
+        unsubscribePrimary();
+        unsubscribeSecondary();
+      };
     } catch (error) {
       console.error('Error setting up notes subscription:', error);
       return () => {};
@@ -302,10 +405,10 @@ export class NoteService {
       const timestamp = Date.now();
       const fileName = `${timestamp}_${file.name}`;
       const photoRef = ref(storage, `notes/${userId}/${fileName}`);
-      
+
       const snapshot = await uploadBytes(photoRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
+
       return downloadURL;
     } catch (error) {
       console.error('Error uploading photo:', error);

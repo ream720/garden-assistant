@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Note, CreateNoteData, UpdateNoteData, NoteFilters } from '../lib/types/note';
 import { noteService } from '../lib/services/noteService';
+import { useAuthStore } from './authStore';
 
 interface NoteState {
   notes: Note[];
@@ -46,9 +47,18 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   updateNote: async (id: string, updates: UpdateNoteData) => {
+    const { user } = useAuthStore.getState();
+    if (!user) {
+      set({
+        error: 'User not authenticated',
+        loading: false,
+      });
+      throw new Error('User not authenticated');
+    }
+
     set({ loading: true, error: null });
     try {
-      const updatedNote = await noteService.update(id, updates);
+      const updatedNote = await noteService.update(id, updates, user.uid);
       set(state => ({
         notes: state.notes.map(note => 
           note.id === id ? updatedNote : note
@@ -65,9 +75,18 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   deleteNote: async (id: string) => {
+    const { user } = useAuthStore.getState();
+    if (!user) {
+      set({
+        error: 'User not authenticated',
+        loading: false,
+      });
+      throw new Error('User not authenticated');
+    }
+
     set({ loading: true, error: null });
     try {
-      await noteService.delete(id);
+      await noteService.delete(id, user.uid);
       set(state => ({
         notes: state.notes.filter(note => note.id !== id),
         loading: false

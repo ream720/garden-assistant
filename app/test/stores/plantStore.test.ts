@@ -165,6 +165,36 @@ describe('Plant Store', () => {
     warnSpy.mockRestore();
   });
 
+  it('should use authenticated uid for plant creation note when created plant has no userId field', async () => {
+    const newPlant = {
+      ...mockPlant,
+      id: 'plant-4',
+      name: 'No UserId Plant',
+      userId: undefined as unknown as string,
+    };
+    vi.mocked(plantService.createPlant).mockResolvedValue({
+      data: newPlant,
+      error: undefined,
+    });
+
+    const { createPlant } = usePlantStore.getState();
+    await createPlant({
+      spaceId: 'space-1',
+      userId: 'user-1',
+      name: 'No UserId Plant',
+      variety: 'Test Variety',
+      plantedDate: new Date('2024-01-01'),
+      status: 'seedling',
+    });
+
+    expect(noteService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plantId: 'plant-4',
+      }),
+      'user-1'
+    );
+  });
+
   it('should update plant successfully', async () => {
     // Set initial state with a plant
     usePlantStore.setState({ plants: [mockPlant] });
@@ -341,6 +371,38 @@ describe('Plant Store', () => {
     );
 
     warnSpy.mockRestore();
+  });
+
+  it('should use authenticated uid for harvest note when harvested plant has no userId field', async () => {
+    usePlantStore.setState({ plants: [mockPlant] });
+
+    const harvestDate = new Date('2024-06-01');
+    const harvestedPlant = {
+      ...mockPlant,
+      status: 'harvested' as const,
+      actualHarvestDate: harvestDate,
+      userId: undefined as unknown as string,
+    };
+    vi.mocked(plantService.harvestPlant).mockResolvedValue({
+      data: harvestedPlant,
+      error: undefined,
+    });
+
+    const { harvestPlant } = usePlantStore.getState();
+    const result = await harvestPlant('plant-1', harvestDate, {
+      createLinkedNote: true,
+      noteContent: 'Harvest note',
+      noteTimestamp: harvestDate,
+    });
+
+    expect(result).toEqual({ noteCreated: true });
+    expect(noteService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: 'Harvest note',
+        plantId: 'plant-1',
+      }),
+      'user-1'
+    );
   });
 
   it('should filter plants by space', () => {

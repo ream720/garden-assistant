@@ -11,6 +11,7 @@ import {
 } from '../lib/firebase/auth';
 import type { AuthUser, AuthState } from '../lib/types/auth';
 import { getFriendlyAuthErrorMessage } from '../lib/firebase/authErrors';
+import { ensureUserProfileDocument } from '../lib/firebase/userProfile';
 
 interface AuthStore extends AuthState {
   // Additional loading states for specific operations
@@ -152,6 +153,14 @@ export const initializeAuth = () => {
       if (firebaseUser) {
         const user = formatAuthUser(firebaseUser);
         store.setUser(user);
+
+        ensureUserProfileDocument({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+        }).catch((profileError) => {
+          console.warn('Failed to ensure users/{uid} profile document:', profileError);
+        });
       } else {
         store.setUser(null);
       }
@@ -168,4 +177,3 @@ export const initializeAuth = () => {
     }
   );
 };
-

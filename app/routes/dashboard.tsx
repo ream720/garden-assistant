@@ -186,19 +186,31 @@ function DashboardContent() {
   const currentUserId = user?.uid ?? null;
 
   const scopedSpaces = useMemo(
-    () => (currentUserId ? spaces.filter((space) => space.userId === currentUserId) : []),
+    () =>
+      currentUserId
+        ? spaces.filter((space) => !space.userId || space.userId === currentUserId)
+        : [],
     [spaces, currentUserId]
   );
   const scopedPlants = useMemo(
-    () => (currentUserId ? plants.filter((plant) => plant.userId === currentUserId) : []),
+    () =>
+      currentUserId
+        ? plants.filter((plant) => !plant.userId || plant.userId === currentUserId)
+        : [],
     [plants, currentUserId]
   );
   const scopedTasks = useMemo(
-    () => (currentUserId ? tasks.filter((task) => task.userId === currentUserId) : []),
+    () =>
+      currentUserId
+        ? tasks.filter((task) => !task.userId || task.userId === currentUserId)
+        : [],
     [tasks, currentUserId]
   );
   const scopedNotes = useMemo(
-    () => (currentUserId ? notes.filter((note) => note.userId === currentUserId) : []),
+    () =>
+      currentUserId
+        ? notes.filter((note) => !note.userId || note.userId === currentUserId)
+        : [],
     [notes, currentUserId]
   );
 

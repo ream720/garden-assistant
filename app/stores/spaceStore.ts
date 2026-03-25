@@ -77,15 +77,19 @@ export const useSpaceStore = create<SpaceState>()(
             loading: false 
           }));
 
+          const currentUserId = useAuthStore.getState().user?.uid ?? spaceData.userId;
+
           try {
-            await noteService.create(
-              {
-                content: `Space created: ${newSpace.name} (${SPACE_TYPE_LABELS[newSpace.type]})`,
-                category: 'milestone',
-                spaceId: newSpace.id,
-              },
-              newSpace.userId
-            );
+            if (currentUserId) {
+              await noteService.create(
+                {
+                  content: `Space created: ${newSpace.name} (${SPACE_TYPE_LABELS[newSpace.type]})`,
+                  category: 'milestone',
+                  spaceId: newSpace.id,
+                },
+                currentUserId
+              );
+            }
           } catch (noteError) {
             console.warn('Failed to log space creation note:', {
               spaceId: newSpace.id,
@@ -104,9 +108,15 @@ export const useSpaceStore = create<SpaceState>()(
     },
 
     updateSpace: async (id, updates) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await spaceService.updateSpace(id, updates);
+        const result = await spaceService.updateSpace(id, updates, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -131,9 +141,15 @@ export const useSpaceStore = create<SpaceState>()(
     },
 
     deleteSpace: async (id) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await spaceService.deleteSpace(id);
+        const result = await spaceService.deleteSpace(id, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);

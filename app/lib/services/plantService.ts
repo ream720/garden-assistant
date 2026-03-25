@@ -1,4 +1,3 @@
-import { where, orderBy } from 'firebase/firestore';
 import { BaseService, type ServiceResult, type QueryFilters } from './baseService';
 import { spaceService } from './spaceService';
 import type { Plant, PlantStatus } from '../types';
@@ -33,7 +32,11 @@ export interface MovePlantData {
 
 export class PlantService extends BaseService<Plant> {
   constructor() {
-    super('plants');
+    super('plants', { userScoped: true });
+  }
+
+  async getById(id: string, userId: string): Promise<ServiceResult<Plant>> {
+    return super.getById(id, userId);
   }
 
   /**
@@ -77,8 +80,9 @@ export class PlantService extends BaseService<Plant> {
       };
     }
 
-    // Validate that the space exists and belongs to the user
-    const spaceResult = await spaceService.getById(data.spaceId);
+    // Validate that the space exists for this user context.
+    // Ownership is enforced by path-scoped reads/writes and rules.
+    const spaceResult = await spaceService.getById(data.spaceId, data.userId);
     if (spaceResult.error) {
       return {
         error: {
@@ -89,14 +93,6 @@ export class PlantService extends BaseService<Plant> {
     }
 
     const space = spaceResult.data!;
-    if (space.userId !== data.userId) {
-      return {
-        error: {
-          code: 'PERMISSION_DENIED',
-          message: 'You do not have permission to add plants to this space',
-        },
-      };
-    }
 
     const plantData = {
       ...data,
@@ -108,11 +104,11 @@ export class PlantService extends BaseService<Plant> {
     };
 
     // Create the plant
-    const plantResult = await this.create(plantData);
+    const plantResult = await this.create(plantData, data.userId);
 
     if (plantResult.data) {
       // Update the space's plant count
-      await spaceService.updatePlantCount(data.spaceId, space.plantCount + 1);
+      await spaceService.updatePlantCount(data.spaceId, space.plantCount + 1, data.userId);
     }
 
     return plantResult;
@@ -168,10 +164,10 @@ export class PlantService extends BaseService<Plant> {
 
     // Simplified query without orderBy to avoid index requirements
     const filters: QueryFilters = {
-      where: [{ field: 'userId', operator: '==', value: userId }],
+      where: [],
     };
 
-    const result = await this.list(filters);
+    const result = await this.list(filters, userId);
 
     // Sort in memory instead of in the query
     if (result.data) {
@@ -219,24 +215,36 @@ export class PlantService extends BaseService<Plant> {
 
     const filters: QueryFilters = {
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'status', operator: '==', value: status },
       ],
       orderBy: [{ field: 'plantedDate', direction: 'desc' }],
     };
 
-    return this.list(filters);
+    return this.list(filters, userId);
   }
 
   /**
    * Update a plant
    */
-  async updatePlant(id: string, updates: UpdatePlantData): Promise<ServiceResult<Plant>> {
+  async updatePlant(
+    id: string,
+    updates: UpdatePlantData,
+    userId: string
+  ): Promise<ServiceResult<Plant>> {
     if (!id) {
       return {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Plant ID is required',
+        },
+      };
+    }
+
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
         },
       };
     }
@@ -273,13 +281,17 @@ export class PlantService extends BaseService<Plant> {
       ...(updates.notes !== undefined && { notes: updates.notes?.trim() }),
     };
 
-    return this.update(id, cleanUpdates);
+    return this.update(id, cleanUpdates, userId);
   }
 
   /**
    * Move a plant to a different space
    */
-  async movePlant(plantId: string, moveData: MovePlantData): Promise<ServiceResult<Plant>> {
+  async movePlant(
+    plantId: string,
+    moveData: MovePlantData,
+    userId: string
+  ): Promise<ServiceResult<Plant>> {
     if (!plantId) {
       return {
         error: {
@@ -298,8 +310,17 @@ export class PlantService extends BaseService<Plant> {
       };
     }
 
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     // Get the current plant
-    const plantResult = await this.getById(plantId);
+    const plantResult = await this.getById(plantId, userId);
     if (plantResult.error) {
       return { error: plantResult.error };
     }
@@ -307,8 +328,9 @@ export class PlantService extends BaseService<Plant> {
     const plant = plantResult.data!;
     const oldSpaceId = plant.spaceId;
 
-    // Validate that the new space exists and belongs to the same user
-    const newSpaceResult = await spaceService.getById(moveData.newSpaceId);
+    // Validate that the new space exists in this user context.
+    // Ownership is enforced by path-scoped reads/writes and rules.
+    const newSpaceResult = await spaceService.getById(moveData.newSpaceId, userId);
     if (newSpaceResult.error) {
       return {
         error: {
@@ -319,14 +341,6 @@ export class PlantService extends BaseService<Plant> {
     }
 
     const newSpace = newSpaceResult.data!;
-    if (newSpace.userId !== plant.userId) {
-      return {
-        error: {
-          code: 'PERMISSION_DENIED',
-          message: 'You do not have permission to move plants to this space',
-        },
-      };
-    }
 
     // Don't move if it's the same space
     if (oldSpaceId === moveData.newSpaceId) {
@@ -346,15 +360,15 @@ export class PlantService extends BaseService<Plant> {
     const updateResult = await this.update(plantId, {
       ...updateData,
       spaceId: moveData.newSpaceId,
-    });
+    }, userId);
 
     if (updateResult.data) {
       // Update plant counts for both spaces
-      const oldSpaceResult = await spaceService.getById(oldSpaceId);
+      const oldSpaceResult = await spaceService.getById(oldSpaceId, userId);
       if (oldSpaceResult.data) {
-        await spaceService.updatePlantCount(oldSpaceId, oldSpaceResult.data.plantCount - 1);
+        await spaceService.updatePlantCount(oldSpaceId, oldSpaceResult.data.plantCount - 1, userId);
       }
-      await spaceService.updatePlantCount(moveData.newSpaceId, newSpace.plantCount + 1);
+      await spaceService.updatePlantCount(moveData.newSpaceId, newSpace.plantCount + 1, userId);
     }
 
     return updateResult;
@@ -363,7 +377,12 @@ export class PlantService extends BaseService<Plant> {
   /**
    * Mark a plant as harvested
    */
-  async harvestPlant(plantId: string, harvestDate: Date, notes?: string): Promise<ServiceResult<Plant>> {
+  async harvestPlant(
+    plantId: string,
+    harvestDate: Date,
+    userId: string,
+    notes?: string
+  ): Promise<ServiceResult<Plant>> {
     if (!plantId) {
       return {
         error: {
@@ -382,19 +401,32 @@ export class PlantService extends BaseService<Plant> {
       };
     }
 
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     const updateData: UpdatePlantData = {
       status: 'harvested',
       actualHarvestDate: harvestDate,
       ...(notes && { notes: notes.trim() }),
     };
 
-    return this.update(plantId, updateData);
+    return this.update(plantId, updateData, userId);
   }
 
   /**
    * Remove a plant (mark as removed and update space plant count)
    */
-  async removePlant(plantId: string, notes?: string): Promise<ServiceResult<Plant>> {
+  async removePlant(
+    plantId: string,
+    userId: string,
+    notes?: string
+  ): Promise<ServiceResult<Plant>> {
     if (!plantId) {
       return {
         error: {
@@ -404,8 +436,17 @@ export class PlantService extends BaseService<Plant> {
       };
     }
 
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     // Get the current plant to update space count
-    const plantResult = await this.getById(plantId);
+    const plantResult = await this.getById(plantId, userId);
     if (plantResult.error) {
       return { error: plantResult.error };
     }
@@ -417,13 +458,13 @@ export class PlantService extends BaseService<Plant> {
       ...(notes && { notes: notes.trim() }),
     };
 
-    const updateResult = await this.update(plantId, updateData);
+    const updateResult = await this.update(plantId, updateData, userId);
 
     if (updateResult.data && plant.status !== 'removed') {
       // Update the space's plant count (only if plant wasn't already removed)
-      const spaceResult = await spaceService.getById(plant.spaceId);
+      const spaceResult = await spaceService.getById(plant.spaceId, userId);
       if (spaceResult.data) {
-        await spaceService.updatePlantCount(plant.spaceId, spaceResult.data.plantCount - 1);
+        await spaceService.updatePlantCount(plant.spaceId, spaceResult.data.plantCount - 1, userId);
       }
     }
 
@@ -451,12 +492,11 @@ export class PlantService extends BaseService<Plant> {
     const filters: QueryFilters = {
       where: [
         { field: 'spaceId', operator: '==', value: spaceId },
-        { field: 'userId', operator: '==', value: userId },
       ],
       orderBy: [{ field: 'plantedDate', direction: 'desc' }],
     };
 
-    return this.subscribe(callback, filters);
+    return this.subscribe(callback, filters, userId);
   }
 
   /**
@@ -477,37 +517,33 @@ export class PlantService extends BaseService<Plant> {
     }
 
     const filters: QueryFilters = {
-      where: [{ field: 'userId', operator: '==', value: userId }],
+      where: [],
       orderBy: [{ field: 'plantedDate', direction: 'desc' }],
     };
 
-    return this.subscribe(callback, filters);
+    return this.subscribe(callback, filters, userId);
   }
 
   /**
    * Alias for getSpacePlants to match store expectations
    */
-  async getPlantsBySpace(spaceId: string): Promise<ServiceResult<Plant[]>> {
-    // We need the user ID, so we'll get it from the auth store
-    // This is a temporary solution - ideally the store should pass the userId
-    const { user } = await import('../../stores/authStore').then(m => m.useAuthStore.getState());
-
-    if (!user) {
+  async getPlantsBySpace(spaceId: string, userId: string): Promise<ServiceResult<Plant[]>> {
+    if (!userId) {
       return {
         error: {
-          code: 'AUTHENTICATION_ERROR',
-          message: 'User not authenticated',
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
         },
       };
     }
 
-    return this.getSpacePlants(spaceId, user.uid);
+    return this.getSpacePlants(spaceId, userId);
   }
 
   /**
    * Delete a plant (alias for removePlant)
    */
-  async deletePlant(plantId: string): Promise<ServiceResult<Plant>> {
+  async deletePlant(plantId: string, userId: string): Promise<ServiceResult<Plant>> {
     if (!plantId) {
       return {
         error: {
@@ -517,8 +553,17 @@ export class PlantService extends BaseService<Plant> {
       };
     }
 
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     // Get the current plant to update space count
-    const plantResult = await this.getById(plantId);
+    const plantResult = await this.getById(plantId, userId);
     if (plantResult.error) {
       return { error: plantResult.error };
     }
@@ -526,16 +571,16 @@ export class PlantService extends BaseService<Plant> {
     const plant = plantResult.data!;
 
     // Actually delete the plant from the database
-    const deleteResult = await this.delete(plantId);
+    const deleteResult = await this.delete(plantId, userId);
 
     if (deleteResult.error) {
       return { error: deleteResult.error };
     }
 
     // Update the space's plant count
-    const spaceResult = await spaceService.getById(plant.spaceId);
+    const spaceResult = await spaceService.getById(plant.spaceId, userId);
     if (spaceResult.data) {
-      await spaceService.updatePlantCount(plant.spaceId, spaceResult.data.plantCount - 1);
+      await spaceService.updatePlantCount(plant.spaceId, spaceResult.data.plantCount - 1, userId);
     }
 
     return { data: plant };

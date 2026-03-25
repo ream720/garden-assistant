@@ -1,4 +1,3 @@
-import { where, orderBy } from 'firebase/firestore';
 import { BaseService, type ServiceResult, type QueryFilters } from './baseService';
 import type { GrowSpace, SpaceType } from '../types';
 
@@ -59,7 +58,11 @@ export interface UpdateSpaceData {
 
 export class SpaceService extends BaseService<GrowSpace> {
   constructor() {
-    super('spaces');
+    super('spaces', { userScoped: true });
+  }
+
+  async getById(id: string, userId: string): Promise<ServiceResult<GrowSpace>> {
+    return super.getById(id, userId);
   }
 
   /**
@@ -111,7 +114,7 @@ export class SpaceService extends BaseService<GrowSpace> {
       plantCount: 0, // Initialize with 0 plants
     };
 
-    return this.create(spaceData);
+    return this.create(spaceData, data.userId);
   }
 
   /**
@@ -128,12 +131,11 @@ export class SpaceService extends BaseService<GrowSpace> {
     }
 
     const filters: QueryFilters = {
-      where: [{ field: 'userId', operator: '==', value: userId }],
       // Temporarily removed orderBy to avoid index requirement
       // orderBy: [{ field: 'name', direction: 'asc' }],
     };
 
-    const result = await this.list(filters);
+    const result = await this.list(filters, userId);
     
     // Sort client-side as a temporary workaround
     if (result.data) {
@@ -146,12 +148,25 @@ export class SpaceService extends BaseService<GrowSpace> {
   /**
    * Update a space
    */
-  async updateSpace(id: string, updates: UpdateSpaceData): Promise<ServiceResult<GrowSpace>> {
+  async updateSpace(
+    id: string,
+    updates: UpdateSpaceData,
+    userId: string
+  ): Promise<ServiceResult<GrowSpace>> {
     if (!id) {
       return {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Space ID is required',
+        },
+      };
+    }
+
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
         },
       };
     }
@@ -185,13 +200,13 @@ export class SpaceService extends BaseService<GrowSpace> {
       ...(updates.name && { name: updates.name.trim() }),
     };
 
-    return this.update(id, cleanUpdates);
+    return this.update(id, cleanUpdates, userId);
   }
 
   /**
    * Delete a space (with validation for existing plants)
    */
-  async deleteSpace(id: string): Promise<ServiceResult<void>> {
+  async deleteSpace(id: string, userId: string): Promise<ServiceResult<void>> {
     if (!id) {
       return {
         error: {
@@ -201,8 +216,17 @@ export class SpaceService extends BaseService<GrowSpace> {
       };
     }
 
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     // First check if the space exists and get its plant count
-    const spaceResult = await this.getById(id);
+    const spaceResult = await this.getById(id, userId);
     if (spaceResult.error) {
       return { error: spaceResult.error };
     }
@@ -217,18 +241,31 @@ export class SpaceService extends BaseService<GrowSpace> {
       };
     }
 
-    return this.delete(id);
+    return this.delete(id, userId);
   }
 
   /**
    * Update plant count for a space
    */
-  async updatePlantCount(spaceId: string, plantCount: number): Promise<ServiceResult<GrowSpace>> {
+  async updatePlantCount(
+    spaceId: string,
+    plantCount: number,
+    userId: string
+  ): Promise<ServiceResult<GrowSpace>> {
     if (!spaceId) {
       return {
         error: {
           code: 'VALIDATION_ERROR',
           message: 'Space ID is required',
+        },
+      };
+    }
+
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
         },
       };
     }
@@ -242,7 +279,7 @@ export class SpaceService extends BaseService<GrowSpace> {
       };
     }
 
-    return this.update(spaceId, { plantCount });
+    return this.update(spaceId, { plantCount }, userId);
   }
 
   /**
@@ -263,7 +300,6 @@ export class SpaceService extends BaseService<GrowSpace> {
     }
 
     const filters: QueryFilters = {
-      where: [{ field: 'userId', operator: '==', value: userId }],
       // Temporarily removed orderBy to avoid index requirement
       // orderBy: [{ field: 'name', direction: 'asc' }],
     };
@@ -274,7 +310,7 @@ export class SpaceService extends BaseService<GrowSpace> {
         result.data.sort((a, b) => a.name.localeCompare(b.name));
       }
       callback(result);
-    }, filters);
+    }, filters, userId);
   }
 
   /**
@@ -301,14 +337,13 @@ export class SpaceService extends BaseService<GrowSpace> {
 
     const filters: QueryFilters = {
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'type', operator: '==', value: type },
       ],
       // Temporarily removed orderBy to avoid index requirement
       // orderBy: [{ field: 'name', direction: 'asc' }],
     };
 
-    const result = await this.list(filters);
+    const result = await this.list(filters, userId);
     
     // Sort client-side as a temporary workaround
     if (result.data) {

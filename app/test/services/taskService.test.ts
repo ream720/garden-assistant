@@ -57,9 +57,7 @@ describe('TaskService', () => {
 
       await taskService.getUserTasks(mockUserId);
 
-      expect(listSpy).toHaveBeenCalledWith({
-        where: [{ field: 'userId', operator: '==', value: mockUserId }],
-      });
+      expect(listSpy).toHaveBeenCalledWith(undefined, mockUserId);
     });
   });
 
@@ -73,10 +71,9 @@ describe('TaskService', () => {
 
       expect(listSpy).toHaveBeenCalledWith({
         where: [
-          { field: 'userId', operator: '==', value: mockUserId },
           { field: 'spaceId', operator: '==', value: mockSpaceId }
         ],
-      });
+      }, mockUserId);
     });
   });
 
@@ -90,10 +87,9 @@ describe('TaskService', () => {
 
       expect(listSpy).toHaveBeenCalledWith({
         where: [
-          { field: 'userId', operator: '==', value: mockUserId },
           { field: 'plantId', operator: '==', value: mockPlantId }
         ],
-      });
+      }, mockUserId);
     });
   });
 
@@ -113,7 +109,7 @@ describe('TaskService', () => {
 
       await taskService.createTask(taskData);
 
-      expect(createSpy).toHaveBeenCalledWith(taskData);
+      expect(createSpy).toHaveBeenCalledWith(taskData, mockUserId);
     });
 
     it('should seed recurrence metadata for recurring tasks', async () => {
@@ -162,11 +158,12 @@ describe('TaskService', () => {
         expect.objectContaining({
           recurrenceOccurrence: 1,
           recurrenceStartDate: recurringDueDate,
-        })
+        }),
+        mockUserId
       );
       expect(updateSpy).toHaveBeenCalledWith('recurring-create-id', {
         recurrenceSeriesId: 'recurring-create-id',
-      });
+      }, mockUserId);
       expect(result.data?.recurrenceSeriesId).toBe('recurring-create-id');
       expect(result.data?.recurrenceOccurrence).toBe(1);
     });
@@ -200,12 +197,16 @@ describe('TaskService', () => {
         data: { ...mockTask, status: 'completed', completedAt: new Date() }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
-      expect(updateSpy).toHaveBeenCalledWith(mockTaskId, expect.objectContaining({
-        status: 'completed',
-        completedAt: expect.any(Date)
-      }));
+      expect(updateSpy).toHaveBeenCalledWith(
+        mockTaskId,
+        expect.objectContaining({
+          status: 'completed',
+          completedAt: expect.any(Date)
+        }),
+        mockUserId
+      );
     });
 
     it('should set completedAt to approximately the current time', async () => {
@@ -214,7 +215,7 @@ describe('TaskService', () => {
         data: { ...mockTask, status: 'completed', completedAt: new Date() }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
       const after = new Date();
 
       const calledWith = updateSpy.mock.calls[0][1] as { completedAt: Date };
@@ -242,7 +243,7 @@ describe('TaskService', () => {
         data: { ...recurringTask, id: 'new-task-id', status: 'pending' }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       // Should have called create for the next recurring task
       expect(createSpy).toHaveBeenCalled();
@@ -260,7 +261,7 @@ describe('TaskService', () => {
         data: mockTask
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       // create should NOT be called for non-recurring tasks
       expect(createSpy).not.toHaveBeenCalled();
@@ -288,7 +289,7 @@ describe('TaskService', () => {
         data: { ...recurringTask, id: 'new-task-id', status: 'pending' }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       // Should NOT create next task because next due date exceeds endDate
       expect(createSpy).not.toHaveBeenCalled();
@@ -316,7 +317,7 @@ describe('TaskService', () => {
         data: { ...recurringTask, id: 'new-task-id', status: 'pending' }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       const createArgs = createSpy.mock.calls[0][0] as Partial<Task>;
       const expectedNextDate = addDays(baseDueDate, 3);
@@ -345,7 +346,7 @@ describe('TaskService', () => {
         data: { ...recurringTask, id: 'new-task-id', status: 'pending' }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       const createArgs = createSpy.mock.calls[0][0] as Partial<Task>;
       const expectedNextDate = addWeeks(baseDueDate, 2);
@@ -374,7 +375,7 @@ describe('TaskService', () => {
         data: { ...recurringTask, id: 'new-task-id', status: 'pending' }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       const createArgs = createSpy.mock.calls[0][0] as Partial<Task>;
       const expectedNextDate = addMonths(baseDueDate, 1);
@@ -402,7 +403,7 @@ describe('TaskService', () => {
         data: { ...recurringTask, id: 'new-task-id', status: 'pending' }
       });
 
-      await taskService.completeTask(mockTaskId);
+      await taskService.completeTask(mockTaskId, mockUserId);
 
       const createArgs = createSpy.mock.calls[0][0] as Partial<Task>;
       expect(createArgs.userId).toBe(mockUserId);
@@ -419,6 +420,34 @@ describe('TaskService', () => {
         recurringTask.dueDate.getTime()
       );
     });
+
+    it('should create next recurring task using authenticated userId when task.userId is missing', async () => {
+      const recurringTaskWithoutUserId: Task = {
+        ...mockTask,
+        userId: undefined as unknown as string,
+        dueDate: new Date('2024-03-01'),
+        status: 'completed',
+        completedAt: new Date(),
+        recurrenceStartDate: new Date('2024-03-01'),
+        recurrence: {
+          type: 'daily',
+          interval: 1,
+        },
+      };
+
+      vi.spyOn(taskService, 'update').mockResolvedValue({
+        data: recurringTaskWithoutUserId,
+      });
+
+      const createSpy = vi.spyOn(taskService, 'create').mockResolvedValue({
+        data: { ...recurringTaskWithoutUserId, id: 'new-task-id', status: 'pending' },
+      });
+
+      await taskService.completeTask(mockTaskId, mockUserId);
+
+      const createArgs = createSpy.mock.calls[0][0] as Partial<Task>;
+      expect(createArgs.userId).toBe(mockUserId);
+    });
   });
 
   describe('updateTask', () => {
@@ -432,7 +461,7 @@ describe('TaskService', () => {
           type: 'weekly',
           interval: 1,
         },
-      });
+      }, mockUserId);
 
       expect(updateSpy).not.toHaveBeenCalled();
       expect(result.error?.code).toBe('VALIDATION_ERROR');
@@ -450,12 +479,11 @@ describe('TaskService', () => {
 
       expect(listSpy).toHaveBeenCalledWith({
         where: [
-          { field: 'userId', operator: '==', value: mockUserId },
           { field: 'status', operator: '==', value: 'pending' },
           { field: 'dueDate', operator: '<', value: expect.any(Date) }
         ],
         orderBy: [{ field: 'dueDate', direction: 'asc' }]
-      });
+      }, mockUserId);
     });
 
     it('should use startOfDay for the date comparison', async () => {
@@ -503,13 +531,12 @@ describe('TaskService', () => {
 
       expect(listSpy).toHaveBeenCalledWith({
         where: [
-          { field: 'userId', operator: '==', value: mockUserId },
           { field: 'status', operator: '==', value: 'pending' },
           { field: 'dueDate', operator: '>=', value: expect.any(Date) },
           { field: 'dueDate', operator: '<=', value: expect.any(Date) }
         ],
         orderBy: [{ field: 'dueDate', direction: 'asc' }]
-      });
+      }, mockUserId);
     });
 
     it('should use a 7-day range from startOfDay by default', async () => {
@@ -579,9 +606,9 @@ describe('TaskService', () => {
     it('should call delete with the task id', async () => {
       const deleteSpy = vi.spyOn(taskService, 'delete').mockResolvedValue({});
 
-      await taskService.deleteTask(mockTaskId);
+      await taskService.deleteTask(mockTaskId, mockUserId);
 
-      expect(deleteSpy).toHaveBeenCalledWith(mockTaskId);
+      expect(deleteSpy).toHaveBeenCalledWith(mockTaskId, mockUserId);
     });
   });
 });

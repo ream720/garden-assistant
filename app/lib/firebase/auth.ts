@@ -10,6 +10,7 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from './config';
+import { ensureUserProfileDocument } from './userProfile';
 
 export interface AuthUser {
   uid: string;
@@ -24,6 +25,11 @@ export const createUser = async (
 ): Promise<AuthUser> => {
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(userCredential.user, { displayName });
+  await ensureUserProfileDocument({
+    uid: userCredential.user.uid,
+    email: userCredential.user.email,
+    displayName,
+  });
 
   return {
     uid: userCredential.user.uid,
@@ -39,6 +45,12 @@ export const signIn = async (email: string, password: string, rememberMe: boolea
   await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
 
   const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  await ensureUserProfileDocument({
+    uid: userCredential.user.uid,
+    email: userCredential.user.email,
+    displayName: userCredential.user.displayName,
+  });
+
   return {
     uid: userCredential.user.uid,
     email: userCredential.user.email,

@@ -63,7 +63,7 @@ describe('SpaceService', () => {
       expect(mockCreate).toHaveBeenCalledWith({
         ...validSpaceData,
         plantCount: 0,
-      });
+      }, 'user123');
     });
 
     it('should validate required name field', async () => {
@@ -143,7 +143,7 @@ describe('SpaceService', () => {
         ...validSpaceData,
         name: 'My Garden',
         plantCount: 0,
-      });
+      }, 'user123');
     });
   });
 
@@ -168,9 +168,8 @@ describe('SpaceService', () => {
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(mockSpaces);
       expect(mockList).toHaveBeenCalledWith({
-        where: [{ field: 'userId', operator: '==', value: 'user123' }],
         // orderBy removed due to Firestore index requirements
-      });
+      }, 'user123');
     });
 
     it('should validate userId', async () => {
@@ -202,18 +201,18 @@ describe('SpaceService', () => {
       const result = await service.updateSpace('space123', {
         name: 'Updated Garden',
         type: 'greenhouse',
-      });
+      }, 'user123');
 
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(mockSpace);
       expect(mockUpdate).toHaveBeenCalledWith('space123', {
         name: 'Updated Garden',
         type: 'greenhouse',
-      });
+      }, 'user123');
     });
 
     it('should validate space ID', async () => {
-      const result = await service.updateSpace('', { name: 'Updated' });
+      const result = await service.updateSpace('', { name: 'Updated' }, 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -224,7 +223,7 @@ describe('SpaceService', () => {
     });
 
     it('should validate name is not empty', async () => {
-      const result = await service.updateSpace('space123', { name: '' });
+      const result = await service.updateSpace('space123', { name: '' }, 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -237,7 +236,7 @@ describe('SpaceService', () => {
     it('should validate space type', async () => {
       const result = await service.updateSpace('space123', {
         type: 'invalid-type' as SpaceType,
-      });
+      }, 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -263,10 +262,10 @@ describe('SpaceService', () => {
       mockGetById.mockResolvedValue({ data: mockSpace });
       mockDelete.mockResolvedValue({ data: undefined });
 
-      const result = await service.deleteSpace('space123');
+      const result = await service.deleteSpace('space123', 'user123');
 
       expect(result.error).toBeUndefined();
-      expect(mockDelete).toHaveBeenCalledWith('space123');
+      expect(mockDelete).toHaveBeenCalledWith('space123', 'user123');
     });
 
     it('should prevent deletion of space with plants', async () => {
@@ -282,7 +281,7 @@ describe('SpaceService', () => {
 
       mockGetById.mockResolvedValue({ data: mockSpace });
 
-      const result = await service.deleteSpace('space123');
+      const result = await service.deleteSpace('space123', 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -293,7 +292,7 @@ describe('SpaceService', () => {
     });
 
     it('should validate space ID', async () => {
-      const result = await service.deleteSpace('');
+      const result = await service.deleteSpace('', 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -318,15 +317,15 @@ describe('SpaceService', () => {
 
       mockUpdate.mockResolvedValue({ data: mockSpace });
 
-      const result = await service.updatePlantCount('space123', 5);
+      const result = await service.updatePlantCount('space123', 5, 'user123');
 
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(mockSpace);
-      expect(mockUpdate).toHaveBeenCalledWith('space123', { plantCount: 5 });
+      expect(mockUpdate).toHaveBeenCalledWith('space123', { plantCount: 5 }, 'user123');
     });
 
     it('should validate space ID', async () => {
-      const result = await service.updatePlantCount('', 5);
+      const result = await service.updatePlantCount('', 5, 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -337,7 +336,7 @@ describe('SpaceService', () => {
     });
 
     it('should validate plant count is not negative', async () => {
-      const result = await service.updatePlantCount('space123', -1);
+      const result = await service.updatePlantCount('space123', -1, 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -356,10 +355,13 @@ describe('SpaceService', () => {
 
       const unsubscribe = service.subscribeToUserSpaces('user123', mockCallback);
 
-      expect(mockSubscribe).toHaveBeenCalledWith(expect.any(Function), {
-        where: [{ field: 'userId', operator: '==', value: 'user123' }],
-        // orderBy removed due to Firestore index requirements
-      });
+      expect(mockSubscribe).toHaveBeenCalledWith(
+        expect.any(Function),
+        {
+          // orderBy removed due to Firestore index requirements
+        },
+        'user123'
+      );
       expect(unsubscribe).toBe(mockUnsubscribe);
     });
 

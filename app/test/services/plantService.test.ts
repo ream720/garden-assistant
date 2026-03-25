@@ -95,8 +95,8 @@ describe('PlantService', () => {
       expect(mockCreate).toHaveBeenCalledWith({
         ...validPlantData,
         status: 'seedling',
-      });
-      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space123', 3);
+      }, 'user123');
+      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space123', 3, 'user123');
     });
 
     it('should validate required name field', async () => {
@@ -138,22 +138,30 @@ describe('PlantService', () => {
         expect.objectContaining({
           variety: '',
           status: 'seedling',
-        })
+        }),
+        'user123'
       );
     });
 
-    it('should validate space ownership', async () => {
-      const wrongUserSpace = { ...mockSpace, userId: 'different-user' };
-      mockSpaceGetById.mockResolvedValue({ data: wrongUserSpace });
+    it('should allow create when space userId field is absent', async () => {
+      const userIdLessSpace = { ...mockSpace, userId: undefined as unknown as string };
+      const mockPlant: Plant = {
+        id: 'plant-useridless-space',
+        ...validPlantData,
+        status: 'seedling',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockSpaceGetById.mockResolvedValue({ data: userIdLessSpace });
+      mockCreate.mockResolvedValue({ data: mockPlant });
+      mockSpaceUpdatePlantCount.mockResolvedValue({ data: mockSpace });
 
       const result = await service.createPlant(validPlantData);
 
-      expect(result.data).toBeUndefined();
-      expect(result.error).toEqual({
-        code: 'PERMISSION_DENIED',
-        message: 'You do not have permission to add plants to this space',
-      });
-      expect(mockCreate).not.toHaveBeenCalled();
+      expect(result.error).toBeUndefined();
+      expect(result.data).toEqual(mockPlant);
+      expect(mockCreate).toHaveBeenCalled();
     });
 
     it('should validate space exists', async () => {
@@ -283,10 +291,8 @@ describe('PlantService', () => {
       expect(result.data).toEqual(mockPlants);
       // Now calls getUserPlants first, then filters in memory
       expect(mockList).toHaveBeenCalledWith({
-        where: [
-          { field: 'userId', operator: '==', value: 'user123' },
-        ],
-      });
+        where: [],
+      }, 'user123');
     });
 
     it('should validate spaceId', async () => {
@@ -347,16 +353,16 @@ describe('PlantService', () => {
       const result = await service.movePlant('plant123', {
         newSpaceId: 'space456',
         notes: 'Moved to greenhouse',
-      });
+      }, 'user123');
 
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(updatedPlant);
       expect(mockUpdate).toHaveBeenCalledWith('plant123', {
         spaceId: 'space456',
         notes: 'Moved to greenhouse',
-      });
-      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space123', 2);
-      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space456', 2);
+      }, 'user123');
+      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space123', 2, 'user123');
+      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space456', 2, 'user123');
     });
 
     it('should prevent moving to same space', async () => {
@@ -365,7 +371,7 @@ describe('PlantService', () => {
 
       const result = await service.movePlant('plant123', {
         newSpaceId: 'space123',
-      });
+      }, 'user123');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -375,23 +381,28 @@ describe('PlantService', () => {
       expect(mockUpdate).not.toHaveBeenCalled();
     });
 
-    it('should validate new space ownership', async () => {
-      const wrongUserSpace = { ...mockNewSpace, userId: 'different-user' };
+    it('should allow move when plant/new space userId fields are absent', async () => {
+      const legacyFreePlant = { ...mockPlant, userId: undefined as unknown as string };
+      const userIdLessNewSpace = {
+        ...mockNewSpace,
+        userId: undefined as unknown as string,
+      };
+      const updatedPlant = { ...legacyFreePlant, spaceId: 'space456' };
 
-      mockGetById.mockResolvedValue({ data: mockPlant });
-      mockSpaceGetById.mockResolvedValue({ data: wrongUserSpace });
-      mockUpdate.mockResolvedValue({ error: { code: 'PERMISSION_DENIED', message: 'Permission denied' } });
+      mockGetById.mockResolvedValue({ data: legacyFreePlant });
+      mockSpaceGetById
+        .mockResolvedValueOnce({ data: userIdLessNewSpace })
+        .mockResolvedValueOnce({ data: mockOldSpace });
+      mockUpdate.mockResolvedValue({ data: updatedPlant });
+      mockSpaceUpdatePlantCount.mockResolvedValue({ data: mockSpace });
 
       const result = await service.movePlant('plant123', {
         newSpaceId: 'space456',
-      });
+      }, 'user123');
 
-      expect(result.data).toBeUndefined();
-      expect(result.error).toEqual({
-        code: 'PERMISSION_DENIED',
-        message: 'You do not have permission to move plants to this space',
-      });
-      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(result.error).toBeUndefined();
+      expect(result.data).toEqual(updatedPlant);
+      expect(mockUpdate).toHaveBeenCalled();
     });
   });
 
@@ -414,7 +425,7 @@ describe('PlantService', () => {
 
       mockUpdate.mockResolvedValue({ data: harvestedPlant });
 
-      const result = await service.harvestPlant('plant123', harvestDate, 'Great harvest!');
+      const result = await service.harvestPlant('plant123', harvestDate, 'user123', 'Great harvest!');
 
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(harvestedPlant);
@@ -422,11 +433,11 @@ describe('PlantService', () => {
         status: 'harvested',
         actualHarvestDate: harvestDate,
         notes: 'Great harvest!',
-      });
+      }, 'user123');
     });
 
     it('should validate plant ID', async () => {
-      const result = await service.harvestPlant('', new Date(), 'Notes');
+      const result = await service.harvestPlant('', new Date(), 'user123', 'Notes');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -437,7 +448,7 @@ describe('PlantService', () => {
     });
 
     it('should validate harvest date', async () => {
-      const result = await service.harvestPlant('plant123', null as any, 'Notes');
+      const result = await service.harvestPlant('plant123', null as any, 'user123', 'Notes');
 
       expect(result.data).toBeUndefined();
       expect(result.error).toEqual({
@@ -469,15 +480,15 @@ describe('PlantService', () => {
       mockSpaceGetById.mockResolvedValue({ data: mockSpace });
       mockSpaceUpdatePlantCount.mockResolvedValue({ data: mockSpace });
 
-      const result = await service.removePlant('plant123', 'Plant died');
+      const result = await service.removePlant('plant123', 'user123', 'Plant died');
 
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(removedPlant);
       expect(mockUpdate).toHaveBeenCalledWith('plant123', {
         status: 'removed',
         notes: 'Plant died',
-      });
-      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space123', 1);
+      }, 'user123');
+      expect(mockSpaceUpdatePlantCount).toHaveBeenCalledWith('space123', 1, 'user123');
     });
 
     it('should not update plant count if already removed', async () => {
@@ -487,7 +498,7 @@ describe('PlantService', () => {
       mockGetById.mockResolvedValue({ data: alreadyRemovedPlant });
       mockUpdate.mockResolvedValue({ data: removedPlant });
 
-      const result = await service.removePlant('plant123', 'Updated notes');
+      const result = await service.removePlant('plant123', 'user123', 'Updated notes');
 
       expect(result.error).toBeUndefined();
       expect(result.data).toEqual(removedPlant);
@@ -519,11 +530,10 @@ describe('PlantService', () => {
       expect(result.data).toEqual(mockPlants);
       expect(mockList).toHaveBeenCalledWith({
         where: [
-          { field: 'userId', operator: '==', value: 'user123' },
           { field: 'status', operator: '==', value: 'flowering' },
         ],
         orderBy: [{ field: 'plantedDate', direction: 'desc' }],
-      });
+      }, 'user123');
     });
 
     it('should validate status', async () => {

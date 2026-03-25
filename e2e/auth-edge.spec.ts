@@ -6,6 +6,7 @@ const UNAUTHENTICATED_STATE = {
 };
 
 test.use({ storageState: UNAUTHENTICATED_STATE });
+const usingFirebaseEmulator = process.env.PW_USE_FIREBASE_EMULATOR === 'true';
 
 const getCredentials = () => {
   const email = process.env.PW_E2E_EMAIL || process.env.VITE_FIREBASE_LOGIN_USER;
@@ -20,6 +21,11 @@ const getCredentials = () => {
 
 test.describe('Authentication Edge Cases', () => {
   test('new signup shows guided setup and can reopen setup steps', async ({ page }) => {
+    test.skip(
+      !usingFirebaseEmulator,
+      'Signup account-creation coverage runs only in emulator mode to avoid cloud auth pollution.'
+    );
+
     const email = `onboarding-${Date.now()}@grospace.test`;
 
     await page.goto('/register');

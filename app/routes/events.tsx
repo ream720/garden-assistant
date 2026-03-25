@@ -1432,6 +1432,11 @@ function EventsContent() {
   ) => {
     const markOccurrence = async () => {
       if (!occurrence.taskId) {
+        if (!user) {
+          toast.error('User not authenticated');
+          return;
+        }
+
         if (!selectedTask?.recurrence || !selectedTask.recurrenceStartDate) {
           toast.error('Unable to mark this occurrence complete.');
           return;
@@ -1439,7 +1444,7 @@ function EventsContent() {
 
         try {
           const occurrenceTask = await createTask({
-            userId: selectedTask.userId,
+            userId: user.uid,
             title: selectedTask.title,
             description: selectedTask.description,
             dueDate: occurrence.dueDate,

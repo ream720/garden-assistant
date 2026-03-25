@@ -101,16 +101,20 @@ export const usePlantStore = create<PlantState>()(
             loading: false 
           }));
 
+          const currentUserId = useAuthStore.getState().user?.uid ?? plantData.userId;
+
           try {
-            await noteService.create(
-              {
-                content: `Plant created: ${formatPlantDisplayName(newPlant)}`,
-                category: 'milestone',
-                plantId: newPlant.id,
-                spaceId: newPlant.spaceId,
-              },
-              newPlant.userId
-            );
+            if (currentUserId) {
+              await noteService.create(
+                {
+                  content: `Plant created: ${formatPlantDisplayName(newPlant)}`,
+                  category: 'milestone',
+                  plantId: newPlant.id,
+                  spaceId: newPlant.spaceId,
+                },
+                currentUserId
+              );
+            }
           } catch (noteError) {
             console.warn('Failed to log plant creation note:', {
               plantId: newPlant.id,
@@ -129,9 +133,15 @@ export const usePlantStore = create<PlantState>()(
     },
 
     updatePlant: async (id, updates) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await plantService.updatePlant(id, updates);
+        const result = await plantService.updatePlant(id, updates, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -156,9 +166,15 @@ export const usePlantStore = create<PlantState>()(
     },
 
     deletePlant: async (id) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await plantService.deletePlant(id);
+        const result = await plantService.deletePlant(id, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -180,9 +196,15 @@ export const usePlantStore = create<PlantState>()(
     },
 
     movePlant: async (id, newSpaceId) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await plantService.movePlant(id, { newSpaceId });
+        const result = await plantService.movePlant(id, { newSpaceId }, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -207,9 +229,15 @@ export const usePlantStore = create<PlantState>()(
     },
 
     harvestPlant: async (id, harvestDate, options = {}) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await plantService.harvestPlant(id, harvestDate);
+        const result = await plantService.harvestPlant(id, harvestDate, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -243,7 +271,7 @@ export const usePlantStore = create<PlantState>()(
               spaceId: updatedPlant.spaceId,
               timestamp: options.noteTimestamp ?? harvestDate,
             },
-            updatedPlant.userId
+            user.uid
           );
 
           set({ loading: false });

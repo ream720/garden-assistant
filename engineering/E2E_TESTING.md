@@ -1,6 +1,6 @@
 # Grospace E2E Test Suite
 
-Last updated: March 17, 2026
+Last updated: March 25, 2026
 
 ## Status
 
@@ -17,21 +17,36 @@ Detailed emulator workflow and troubleshooting:
 - [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md)
 
 ```bash
-# Default runs
+# Default runs (emulator-backed; recommended)
 npm run test:e2e
-npm run test:e2e:headed
-npm run test:e2e:ui
+npm run test:e2e:emulator:headed
+npm run test:e2e:emulator:ui
 
 # Emulator-backed runs (recommended for gate stability)
 npm run test:e2e:emulator
 npm run test:e2e:emulator:headed
 npm run test:e2e:emulator:ui
 
+# Cloud-auth runs (explicit opt-in only)
+npm run test:e2e:cloud
+npm run test:e2e:cloud:headed
+npm run test:e2e:cloud:ui
+
 # One-off utilities
 npm run emulators:start:test
 npm run emulators:seed:test
 npm run seed:account:dry
 npm run seed:account
+npm run backfill:auth-users:dry
+npm run backfill:auth-users
+npm run migrate:firestore:user-subcollections:dry
+npm run migrate:firestore:user-subcollections
+npm run migrate:firestore:user-subcollections:verify
+npm run migrate:firestore:user-subcollections:finalize:dry
+npm run migrate:firestore:user-subcollections:finalize
+npm run test:rules
+npm run test:rules:phase1
+npm run test:rules:phase2
 npm run test:e2e:seed-smoke
 npx playwright test --list
 ```

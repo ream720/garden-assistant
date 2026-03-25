@@ -1,22 +1,29 @@
 import {
-  collection,
-  doc,
   addDoc,
+  deleteDoc,
+  doc,
   getDoc,
   getDocs,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
   onSnapshot,
+  orderBy,
+  query,
+  setDoc,
   Timestamp,
+  updateDoc,
+  where,
   type DocumentData,
-  type QueryConstraint,
   type FirestoreError,
+  type QueryConstraint,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
 import type { FirestoreDocument } from '../firebase/firestore';
+import {
+  getTopLevelCollectionRef,
+  getTopLevelDocumentRef,
+  getUserScopedCollectionRefs,
+  getUserScopedDocumentRefs,
+  mergeDocumentsById,
+} from '../firebase/firestorePaths';
+import { isDualFirestoreDataModel } from '../firebase/firestoreDataModel';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 
 export interface ServiceError {
@@ -37,11 +44,17 @@ export interface QueryFilters {
   limit?: number;
 }
 
+export interface BaseServiceOptions {
+  userScoped?: boolean;
+}
+
 export abstract class BaseService<T extends FirestoreDocument> {
   protected collectionName: string;
+  protected userScoped: boolean;
 
-  constructor(collectionName: string) {
+  constructor(collectionName: string, options: BaseServiceOptions = {}) {
     this.collectionName = collectionName;
+    this.userScoped = Boolean(options.userScoped);
   }
 
   /**
@@ -91,21 +104,154 @@ export abstract class BaseService<T extends FirestoreDocument> {
     } as T;
   }
 
+  private missingUserIdError(): ServiceError {
+    return {
+      code: 'VALIDATION_ERROR',
+      message: 'User ID is required',
+    };
+  }
+
+  private normalizeComparable(value: unknown): unknown {
+    if (value instanceof Date) {
+      return value.getTime();
+    }
+
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      typeof (value as { toDate?: unknown }).toDate === 'function'
+    ) {
+      try {
+        return (value as { toDate: () => Date }).toDate().getTime();
+      } catch {
+        return value;
+      }
+    }
+
+    if (typeof value === 'string') {
+      const dateValue = Date.parse(value);
+      if (!Number.isNaN(dateValue)) {
+        return dateValue;
+      }
+    }
+
+    return value;
+  }
+
+  private sortDocuments(documents: T[], filters?: QueryFilters): T[] {
+    if (!filters?.orderBy?.length) {
+      return documents;
+    }
+
+    const sorted = [...documents];
+
+    sorted.sort((left, right) => {
+      for (const { field, direction } of filters.orderBy || []) {
+        const leftValue = this.normalizeComparable((left as Record<string, unknown>)[field]);
+        const rightValue = this.normalizeComparable((right as Record<string, unknown>)[field]);
+
+        if (leftValue === rightValue) {
+          continue;
+        }
+
+        if (leftValue === undefined || leftValue === null) {
+          return direction === 'asc' ? -1 : 1;
+        }
+
+        if (rightValue === undefined || rightValue === null) {
+          return direction === 'asc' ? 1 : -1;
+        }
+
+        const comparison = leftValue < rightValue ? -1 : 1;
+        return direction === 'asc' ? comparison : comparison * -1;
+      }
+
+      return 0;
+    });
+
+    return sorted;
+  }
+
+  private finalizeDocuments(documents: T[], filters?: QueryFilters): T[] {
+    const ordered = this.sortDocuments(documents, filters);
+    if (!filters?.limit || filters.limit <= 0) {
+      return ordered;
+    }
+
+    return ordered.slice(0, filters.limit);
+  }
+
+  private buildQueryConstraints(
+    filters?: QueryFilters,
+    options?: {
+      stripUserIdFilter?: boolean;
+      enforceUserId?: string;
+    }
+  ): QueryConstraint[] {
+    const constraints: QueryConstraint[] = [];
+
+    if (options?.enforceUserId) {
+      constraints.push(where('userId', '==', options.enforceUserId));
+    }
+
+    if (filters?.where) {
+      filters.where.forEach(({ field, operator, value }) => {
+        if (field === 'userId' && options?.stripUserIdFilter) {
+          return;
+        }
+
+        if (field === 'userId' && options?.enforceUserId) {
+          return;
+        }
+
+        constraints.push(where(field, operator, value));
+      });
+    }
+
+    if (filters?.orderBy) {
+      filters.orderBy.forEach(({ field, direction }) => {
+        constraints.push(orderBy(field, direction));
+      });
+    }
+
+    return constraints;
+  }
+
   /**
    * Create a new document in the collection
    */
-  async create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>): Promise<ServiceResult<T>> {
+  async create(
+    data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    userId?: string
+  ): Promise<ServiceResult<T>> {
     try {
+      if (this.userScoped && !userId) {
+        return { error: this.missingUserIdError() };
+      }
+
       const now = Timestamp.now();
       const cleanData = cleanFirestoreData({
         ...data,
         createdAt: now,
         updatedAt: now,
       });
-      
-      const docRef = await addDoc(collection(db, this.collectionName), cleanData);
 
-      const createdDoc = await this.getById(docRef.id);
+      if (!this.userScoped) {
+        const docRef = await addDoc(getTopLevelCollectionRef(this.collectionName), cleanData);
+        const createdDoc = await this.getById(docRef.id);
+        return { data: createdDoc.data };
+      }
+
+      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId!);
+      const primaryDocRef = doc(primary);
+
+      await setDoc(primaryDocRef, cleanData);
+
+      if (isDualFirestoreDataModel() && secondary) {
+        await setDoc(doc(secondary, primaryDocRef.id), cleanData);
+      }
+
+      const createdDoc = await this.getById(primaryDocRef.id, userId);
       return { data: createdDoc.data };
     } catch (error) {
       return { error: this.handleError(error) };
@@ -115,16 +261,47 @@ export abstract class BaseService<T extends FirestoreDocument> {
   /**
    * Get a document by ID
    */
-  async getById(id: string): Promise<ServiceResult<T>> {
+  async getById(id: string, userId?: string): Promise<ServiceResult<T>> {
     try {
-      const docRef = doc(db, this.collectionName, id);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const document = this.mapDocument(docSnap.id, docSnap.data());
+      if (!this.userScoped) {
+        const topLevelRef = getTopLevelDocumentRef(this.collectionName, id);
+        const topLevelSnapshot = await getDoc(topLevelRef);
+
+        if (topLevelSnapshot.exists()) {
+          const document = this.mapDocument(topLevelSnapshot.id, topLevelSnapshot.data());
+          return { data: document };
+        }
+
+        return { error: { code: 'NOT_FOUND', message: 'Document not found' } };
+      }
+
+      if (!userId) {
+        return { error: this.missingUserIdError() };
+      }
+
+      const { primary, secondary } = getUserScopedDocumentRefs(
+        this.collectionName,
+        userId,
+        id
+      );
+
+      const primarySnapshot = await getDoc(primary);
+      if (primarySnapshot.exists()) {
+        const document = this.mapDocument(primarySnapshot.id, primarySnapshot.data());
         return { data: document };
       }
-      
+
+      if (isDualFirestoreDataModel() && secondary) {
+        const secondarySnapshot = await getDoc(secondary);
+        if (secondarySnapshot.exists()) {
+          const document = this.mapDocument(
+            secondarySnapshot.id,
+            secondarySnapshot.data()
+          );
+          return { data: document };
+        }
+      }
+
       return { error: { code: 'NOT_FOUND', message: 'Document not found' } };
     } catch (error) {
       return { error: this.handleError(error) };
@@ -134,17 +311,47 @@ export abstract class BaseService<T extends FirestoreDocument> {
   /**
    * Update a document by ID
    */
-  async update(id: string, updates: Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>): Promise<ServiceResult<T>> {
+  async update(
+    id: string,
+    updates: Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>,
+    userId?: string
+  ): Promise<ServiceResult<T>> {
     try {
-      const docRef = doc(db, this.collectionName, id);
       const cleanUpdates = cleanFirestoreData({
         ...updates,
         updatedAt: Timestamp.now(),
       });
-      
-      await updateDoc(docRef, cleanUpdates);
 
-      const updatedDoc = await this.getById(id);
+      if (!this.userScoped) {
+        const topLevelRef = getTopLevelDocumentRef(this.collectionName, id);
+        await updateDoc(topLevelRef, cleanUpdates);
+
+        const updatedDoc = await this.getById(id);
+        return { data: updatedDoc.data };
+      }
+
+      if (!userId) {
+        return { error: this.missingUserIdError() };
+      }
+
+      const existingDocument = await this.getById(id, userId);
+      if (existingDocument.error) {
+        return { error: existingDocument.error };
+      }
+
+      const { primary, secondary } = getUserScopedDocumentRefs(
+        this.collectionName,
+        userId,
+        id
+      );
+
+      await setDoc(primary, cleanUpdates, { merge: true });
+
+      if (isDualFirestoreDataModel() && secondary) {
+        await setDoc(secondary, cleanUpdates, { merge: true });
+      }
+
+      const updatedDoc = await this.getById(id, userId);
       return { data: updatedDoc.data };
     } catch (error) {
       return { error: this.handleError(error) };
@@ -154,10 +361,29 @@ export abstract class BaseService<T extends FirestoreDocument> {
   /**
    * Delete a document by ID
    */
-  async delete(id: string): Promise<ServiceResult<void>> {
+  async delete(id: string, userId?: string): Promise<ServiceResult<void>> {
     try {
-      const docRef = doc(db, this.collectionName, id);
-      await deleteDoc(docRef);
+      if (!this.userScoped) {
+        await deleteDoc(getTopLevelDocumentRef(this.collectionName, id));
+        return { data: undefined };
+      }
+
+      if (!userId) {
+        return { error: this.missingUserIdError() };
+      }
+
+      const { primary, secondary } = getUserScopedDocumentRefs(
+        this.collectionName,
+        userId,
+        id
+      );
+
+      await deleteDoc(primary);
+
+      if (isDualFirestoreDataModel() && secondary) {
+        await deleteDoc(secondary);
+      }
+
       return { data: undefined };
     } catch (error) {
       return { error: this.handleError(error) };
@@ -167,30 +393,58 @@ export abstract class BaseService<T extends FirestoreDocument> {
   /**
    * List documents with optional filters
    */
-  async list(filters?: QueryFilters): Promise<ServiceResult<T[]>> {
+  async list(filters?: QueryFilters, userId?: string): Promise<ServiceResult<T[]>> {
     try {
-      const constraints: QueryConstraint[] = [];
-      
-      if (filters?.where) {
-        filters.where.forEach(({ field, operator, value }) => {
-          constraints.push(where(field, operator, value));
-        });
-      }
-      
-      if (filters?.orderBy) {
-        filters.orderBy.forEach(({ field, direction }) => {
-          constraints.push(orderBy(field, direction));
-        });
+      if (!this.userScoped) {
+        const constraints = this.buildQueryConstraints(filters);
+        const q = query(getTopLevelCollectionRef(this.collectionName), ...constraints);
+        const querySnapshot = await getDocs(q);
+
+        const documents = querySnapshot.docs.map((snapshotDoc) =>
+          this.mapDocument(snapshotDoc.id, snapshotDoc.data())
+        );
+
+        return { data: this.finalizeDocuments(documents, filters) };
       }
 
-      const q = query(collection(db, this.collectionName), ...constraints);
-      const querySnapshot = await getDocs(q);
-      
-      const documents = querySnapshot.docs.map((snapshotDoc) =>
+      if (!userId) {
+        return { error: this.missingUserIdError() };
+      }
+
+      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+
+      const primaryConstraints = this.buildQueryConstraints(filters, {
+        stripUserIdFilter: true,
+      });
+
+      const primaryQuery = query(primary, ...primaryConstraints);
+
+      const [primarySnapshot, secondarySnapshot] = await Promise.all([
+        getDocs(primaryQuery),
+        isDualFirestoreDataModel() && secondary
+          ? getDocs(
+              query(
+                secondary,
+                ...this.buildQueryConstraints(filters, { enforceUserId: userId })
+              )
+            )
+          : Promise.resolve(null),
+      ]);
+
+      const primaryDocuments = primarySnapshot.docs.map((snapshotDoc) =>
         this.mapDocument(snapshotDoc.id, snapshotDoc.data())
       );
 
-      return { data: documents };
+      if (!secondarySnapshot) {
+        return { data: this.finalizeDocuments(primaryDocuments, filters) };
+      }
+
+      const secondaryDocuments = secondarySnapshot.docs.map((snapshotDoc) =>
+        this.mapDocument(snapshotDoc.id, snapshotDoc.data())
+      );
+
+      const mergedDocuments = mergeDocumentsById(primaryDocuments, secondaryDocuments);
+      return { data: this.finalizeDocuments(mergedDocuments, filters) };
     } catch (error) {
       return { error: this.handleError(error) };
     }
@@ -201,41 +455,93 @@ export abstract class BaseService<T extends FirestoreDocument> {
    */
   subscribe(
     callback: (result: ServiceResult<T[]>) => void,
-    filters?: QueryFilters
+    filters?: QueryFilters,
+    userId?: string
   ): () => void {
     try {
-      const constraints: QueryConstraint[] = [];
-      
-      if (filters?.where) {
-        filters.where.forEach(({ field, operator, value }) => {
-          constraints.push(where(field, operator, value));
-        });
-      }
-      
-      if (filters?.orderBy) {
-        filters.orderBy.forEach(({ field, direction }) => {
-          constraints.push(orderBy(field, direction));
-        });
+      if (!this.userScoped) {
+        const constraints = this.buildQueryConstraints(filters);
+        const q = query(getTopLevelCollectionRef(this.collectionName), ...constraints);
+
+        return onSnapshot(
+          q,
+          (querySnapshot) => {
+            const documents = querySnapshot.docs.map((snapshotDoc) =>
+              this.mapDocument(snapshotDoc.id, snapshotDoc.data())
+            );
+
+            callback({ data: this.finalizeDocuments(documents, filters) });
+          },
+          (error) => {
+            callback({ error: this.handleError(error) });
+          }
+        );
       }
 
-      const q = query(collection(db, this.collectionName), ...constraints);
-      
-      return onSnapshot(
-        q,
+      if (!userId) {
+        callback({ error: this.missingUserIdError() });
+        return () => {};
+      }
+
+      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+
+      const primaryConstraints = this.buildQueryConstraints(filters, {
+        stripUserIdFilter: true,
+      });
+      const primaryQuery = query(primary, ...primaryConstraints);
+
+      let primaryDocuments: T[] = [];
+      let secondaryDocuments: T[] = [];
+
+      const emitMerged = () => {
+        const merged = secondary
+          ? mergeDocumentsById(primaryDocuments, secondaryDocuments)
+          : primaryDocuments;
+        callback({ data: this.finalizeDocuments(merged, filters) });
+      };
+
+      const unsubscribePrimary = onSnapshot(
+        primaryQuery,
         (querySnapshot) => {
-          const documents = querySnapshot.docs.map((snapshotDoc) =>
+          primaryDocuments = querySnapshot.docs.map((snapshotDoc) =>
             this.mapDocument(snapshotDoc.id, snapshotDoc.data())
           );
-          
-          callback({ data: documents });
+          emitMerged();
         },
         (error) => {
           callback({ error: this.handleError(error) });
         }
       );
+
+      if (!isDualFirestoreDataModel() || !secondary) {
+        return unsubscribePrimary;
+      }
+
+      const secondaryConstraints = this.buildQueryConstraints(filters, {
+        enforceUserId: userId,
+      });
+      const secondaryQuery = query(secondary, ...secondaryConstraints);
+
+      const unsubscribeSecondary = onSnapshot(
+        secondaryQuery,
+        (querySnapshot) => {
+          secondaryDocuments = querySnapshot.docs.map((snapshotDoc) =>
+            this.mapDocument(snapshotDoc.id, snapshotDoc.data())
+          );
+          emitMerged();
+        },
+        (error) => {
+          callback({ error: this.handleError(error) });
+        }
+      );
+
+      return () => {
+        unsubscribePrimary();
+        unsubscribeSecondary();
+      };
     } catch (error) {
       callback({ error: this.handleError(error) });
-      return () => {}; // Return empty unsubscribe function
+      return () => {};
     }
   }
 
@@ -244,28 +550,86 @@ export abstract class BaseService<T extends FirestoreDocument> {
    */
   subscribeToDocument(
     id: string,
-    callback: (result: ServiceResult<T>) => void
+    callback: (result: ServiceResult<T>) => void,
+    userId?: string
   ): () => void {
     try {
-      const docRef = doc(db, this.collectionName, id);
-      
-      return onSnapshot(
-        docRef,
-        (docSnap) => {
-          if (docSnap.exists()) {
-            const document = this.mapDocument(docSnap.id, docSnap.data());
-            callback({ data: document });
-          } else {
-            callback({ error: { code: 'NOT_FOUND', message: 'Document not found' } });
+      if (!this.userScoped) {
+        const topLevelRef = getTopLevelDocumentRef(this.collectionName, id);
+
+        return onSnapshot(
+          topLevelRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const document = this.mapDocument(docSnap.id, docSnap.data());
+              callback({ data: document });
+            } else {
+              callback({ error: { code: 'NOT_FOUND', message: 'Document not found' } });
+            }
+          },
+          (error) => {
+            callback({ error: this.handleError(error) });
           }
+        );
+      }
+
+      if (!userId) {
+        callback({ error: this.missingUserIdError() });
+        return () => {};
+      }
+
+      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+
+      let primaryDocument: T | null = null;
+      let secondaryDocument: T | null = null;
+
+      const emitMerged = () => {
+        const effectiveDocument = primaryDocument || secondaryDocument;
+        if (effectiveDocument) {
+          callback({ data: effectiveDocument });
+          return;
+        }
+
+        callback({ error: { code: 'NOT_FOUND', message: 'Document not found' } });
+      };
+
+      const unsubscribePrimary = onSnapshot(
+        primary,
+        (docSnap) => {
+          primaryDocument = docSnap.exists()
+            ? this.mapDocument(docSnap.id, docSnap.data())
+            : null;
+          emitMerged();
         },
         (error) => {
           callback({ error: this.handleError(error) });
         }
       );
+
+      if (!isDualFirestoreDataModel() || !secondary) {
+        return unsubscribePrimary;
+      }
+
+      const unsubscribeSecondary = onSnapshot(
+        secondary,
+        (docSnap) => {
+          secondaryDocument = docSnap.exists()
+            ? this.mapDocument(docSnap.id, docSnap.data())
+            : null;
+          emitMerged();
+        },
+        (error) => {
+          callback({ error: this.handleError(error) });
+        }
+      );
+
+      return () => {
+        unsubscribePrimary();
+        unsubscribeSecondary();
+      };
     } catch (error) {
       callback({ error: this.handleError(error) });
-      return () => {}; // Return empty unsubscribe function
+      return () => {};
     }
   }
 
@@ -298,7 +662,8 @@ export abstract class BaseService<T extends FirestoreDocument> {
         case 'failed-precondition':
           return {
             code: 'FAILED_PRECONDITION',
-            message: 'The operation failed due to a precondition failure. This might be due to missing Firestore indexes or security rules.',
+            message:
+              'The operation failed due to a precondition failure. This might be due to missing Firestore indexes or security rules.',
             details: firebaseError,
           };
         case 'aborted':

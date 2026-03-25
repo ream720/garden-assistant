@@ -126,4 +126,31 @@ describe('Space Store', () => {
 
     warnSpy.mockRestore();
   });
+
+  it('should use authenticated uid for note logging when created space has no userId field', async () => {
+    const newSpace = {
+      ...mockSpace,
+      id: 'space-4',
+      name: 'No UserId Space',
+      userId: undefined as unknown as string,
+    };
+    vi.mocked(spaceService.createSpace).mockResolvedValue({
+      data: newSpace,
+      error: undefined,
+    });
+
+    const { createSpace } = useSpaceStore.getState();
+    await createSpace({
+      userId: 'user-1',
+      name: 'No UserId Space',
+      type: 'indoor-tent',
+    });
+
+    expect(noteService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: 'space-4',
+      }),
+      'user-1'
+    );
+  });
 });

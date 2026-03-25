@@ -3,6 +3,7 @@
 .env.example
 .env.test
 /node_modules/
+/functions/node_modules/
 
 # React Router
 /.react-router/
@@ -13,6 +14,11 @@
 /playwright-report/
 /playwright/.auth/
 /e2e/.auth/
+
+# Firebase local/debug artifacts
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
 
 # Agents and Skills configurations
 .agents/

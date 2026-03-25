@@ -5,16 +5,18 @@ import { incrementRecurrenceDate } from '../utils/taskStatus';
 
 export class TaskService extends BaseService<Task> {
   constructor() {
-    super('tasks');
+    super('tasks', { userScoped: true });
+  }
+
+  async getById(id: string, userId: string): Promise<ServiceResult<Task>> {
+    return super.getById(id, userId);
   }
 
   /**
    * Get all tasks for a user
    */
   async getUserTasks(userId: string): Promise<ServiceResult<Task[]>> {
-    const result = await this.list({
-      where: [{ field: 'userId', operator: '==', value: userId }],
-    });
+    const result = await this.list(undefined, userId);
 
     if (result.data) {
       result.data.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
@@ -29,10 +31,9 @@ export class TaskService extends BaseService<Task> {
   async getSpaceTasks(spaceId: string, userId: string): Promise<ServiceResult<Task[]>> {
     const result = await this.list({
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'spaceId', operator: '==', value: spaceId }
       ],
-    });
+    }, userId);
 
     if (result.data) {
       result.data.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
@@ -47,10 +48,9 @@ export class TaskService extends BaseService<Task> {
   async getPlantTasks(plantId: string, userId: string): Promise<ServiceResult<Task[]>> {
     const result = await this.list({
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'plantId', operator: '==', value: plantId }
       ],
-    });
+    }, userId);
 
     if (result.data) {
       result.data.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
@@ -66,12 +66,11 @@ export class TaskService extends BaseService<Task> {
     const today = startOfDay(new Date());
     return this.list({
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'status', operator: '==', value: 'pending' },
         { field: 'dueDate', operator: '<', value: today }
       ],
       orderBy: [{ field: 'dueDate', direction: 'asc' }]
-    });
+    }, userId);
   }
 
   /**
@@ -83,13 +82,12 @@ export class TaskService extends BaseService<Task> {
     
     return this.list({
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'status', operator: '==', value: 'pending' },
         { field: 'dueDate', operator: '>=', value: today },
         { field: 'dueDate', operator: '<=', value: futureDate }
       ],
       orderBy: [{ field: 'dueDate', direction: 'asc' }]
-    });
+    }, userId);
   }
 
   /**
@@ -113,7 +111,7 @@ export class TaskService extends BaseService<Task> {
         }
       : taskData;
 
-    const result = await this.create(normalizedTaskData);
+    const result = await this.create(normalizedTaskData, taskData.userId);
 
     if (!result.data?.recurrence) {
       return result;
@@ -135,7 +133,7 @@ export class TaskService extends BaseService<Task> {
 
     const backfilledResult = await this.update(result.data.id, {
       recurrenceSeriesId: normalizedTask.recurrenceSeriesId,
-    });
+    }, result.data.userId);
 
     if (backfilledResult.data) {
       const normalizedBackfilledTask = this.normalizeRecurringTask(backfilledResult.data);
@@ -157,7 +155,20 @@ export class TaskService extends BaseService<Task> {
   /**
    * Update a task
    */
-  async updateTask(id: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>): Promise<ServiceResult<Task>> {
+  async updateTask(
+    id: string,
+    updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>,
+    userId: string
+  ): Promise<ServiceResult<Task>> {
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     if (updates.recurrence && !updates.recurrenceStartDate) {
       return {
         error: {
@@ -167,18 +178,27 @@ export class TaskService extends BaseService<Task> {
       };
     }
 
-    return this.update(id, updates);
+    return this.update(id, updates, userId);
   }
 
   /**
    * Complete a task
    */
-  async completeTask(id: string): Promise<ServiceResult<Task>> {
+  async completeTask(id: string, userId: string): Promise<ServiceResult<Task>> {
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
     const completedAt = new Date();
     const result = await this.update(id, { 
       status: 'completed',
       completedAt 
-    });
+    }, userId);
 
     if (result.data && result.data.recurrence) {
       const normalizedCompletedTask = this.normalizeRecurringTask(result.data);
@@ -187,7 +207,7 @@ export class TaskService extends BaseService<Task> {
       }
 
       // Create next recurring task
-      await this.createNextRecurringTask(normalizedCompletedTask);
+      await this.createNextRecurringTask(normalizedCompletedTask, userId);
       return { ...result, data: normalizedCompletedTask };
     }
 
@@ -197,14 +217,26 @@ export class TaskService extends BaseService<Task> {
   /**
    * Delete a task
    */
-  async deleteTask(id: string): Promise<ServiceResult<void>> {
-    return this.delete(id);
+  async deleteTask(id: string, userId: string): Promise<ServiceResult<void>> {
+    if (!userId) {
+      return {
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'User ID is required',
+        },
+      };
+    }
+
+    return this.delete(id, userId);
   }
 
   /**
    * Create the next instance of a recurring task
    */
-  private async createNextRecurringTask(completedTask: Task): Promise<ServiceResult<Task> | null> {
+  private async createNextRecurringTask(
+    completedTask: Task,
+    userId: string
+  ): Promise<ServiceResult<Task> | null> {
     if (!completedTask.recurrence) {
       return null;
     }
@@ -226,7 +258,7 @@ export class TaskService extends BaseService<Task> {
 
     // Create the next task
     const nextTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
-      userId: normalizedCompletedTask.userId,
+      userId,
       plantId: normalizedCompletedTask.plantId,
       spaceId: normalizedCompletedTask.spaceId,
       title: normalizedCompletedTask.title,
@@ -268,9 +300,8 @@ export class TaskService extends BaseService<Task> {
     callback: (result: ServiceResult<Task[]>) => void
   ): () => void {
     return this.subscribe(callback, {
-      where: [{ field: 'userId', operator: '==', value: userId }],
       orderBy: [{ field: 'dueDate', direction: 'asc' }]
-    });
+    }, userId);
   }
 
   /**
@@ -283,11 +314,10 @@ export class TaskService extends BaseService<Task> {
   ): () => void {
     return this.subscribe(callback, {
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'spaceId', operator: '==', value: spaceId }
       ],
       orderBy: [{ field: 'dueDate', direction: 'asc' }]
-    });
+    }, userId);
   }
 
   /**
@@ -300,11 +330,10 @@ export class TaskService extends BaseService<Task> {
   ): () => void {
     return this.subscribe(callback, {
       where: [
-        { field: 'userId', operator: '==', value: userId },
         { field: 'plantId', operator: '==', value: plantId }
       ],
       orderBy: [{ field: 'dueDate', direction: 'asc' }]
-    });
+    }, userId);
   }
 }
 

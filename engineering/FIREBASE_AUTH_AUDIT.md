@@ -1,6 +1,6 @@
 # Firebase Auth Audit
 
-Last updated: March 16, 2026
+Last updated: March 25, 2026
 
 ## Scope and Goal
 
@@ -62,6 +62,8 @@ This audit inventories Grospace auth flows (app + tests), clarifies emulator and
 ## MVP Gate Decision
 
 - Launch policy: **zero Playwright failures** on full emulator-backed run.
+- Script policy: `npm run test:e2e` defaults to emulator mode; cloud-auth runs require explicit `test:e2e:cloud*` commands.
+- Rules policy: run `npm run test:rules` to validate phase-1 and phase-2 ownership enforcement before auth/data model transitions.
 - Evidence policy: both local and CI command evidence required in [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md).
 - Current state (March 16, 2026): emulator bootstrap path is stabilized; full emulator Playwright evidence remains required in an unrestricted runner.
 

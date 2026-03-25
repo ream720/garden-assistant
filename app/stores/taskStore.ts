@@ -158,9 +158,15 @@ export const useTaskStore = create<TaskState>()(
     },
 
     updateTask: async (id, updates) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await taskService.updateTask(id, updates);
+        const result = await taskService.updateTask(id, updates, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -185,9 +191,15 @@ export const useTaskStore = create<TaskState>()(
     },
 
     completeTask: async (id) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await taskService.completeTask(id);
+        const result = await taskService.completeTask(id, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);
@@ -212,9 +224,15 @@ export const useTaskStore = create<TaskState>()(
     },
 
     deleteTask: async (id) => {
+      const { user } = useAuthStore.getState();
+      if (!user) {
+        set({ error: 'User not authenticated', loading: false });
+        throw new Error('User not authenticated');
+      }
+
       set({ loading: true, error: null });
       try {
-        const result = await taskService.deleteTask(id);
+        const result = await taskService.deleteTask(id, user.uid);
         if (result.error) {
           set({ error: result.error.message, loading: false });
           throw new Error(result.error.message);

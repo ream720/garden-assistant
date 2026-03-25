@@ -8,10 +8,10 @@ This directory contains the core data services for the GROSPACE application, pro
 The `BaseService` class provides common CRUD operations and error handling for all Firestore collections:
 
 - **create()** - Create new documents with automatic timestamps
-- **getById()** - Retrieve documents by ID
-- **update()** - Update documents with automatic timestamp updates
-- **delete()** - Delete documents
-- **list()** - Query documents with filters and sorting
+- **getById()** - Retrieve documents by ID (user-scoped for domain collections)
+- **update()** - Update documents with automatic timestamp updates (user-scoped for domain collections)
+- **delete()** - Delete documents (user-scoped for domain collections)
+- **list()** - Query documents with filters and sorting (user-scoped for domain collections)
 - **subscribe()** - Real-time subscriptions to document changes
 - **subscribeToDocument()** - Real-time subscriptions to single documents
 
@@ -76,10 +76,10 @@ const plants = await plantService.getSpacePlants('space123', 'user123');
 await plantService.movePlant('plant123', {
   newSpaceId: 'space456',
   notes: 'Moved to greenhouse for better conditions'
-});
+}, 'user123');
 
 // Harvest a plant
-await plantService.harvestPlant('plant123', new Date(), 'Great harvest!');
+await plantService.harvestPlant('plant123', new Date(), 'user123', 'Great harvest!');
 ```
 
 ## Features
