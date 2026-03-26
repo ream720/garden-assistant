@@ -17,7 +17,6 @@ import { storage } from '../firebase/config';
 import {
   getUserScopedCollectionRefs,
   getUserScopedDocumentRefs,
-  mergeDocumentsById,
 } from '../firebase/firestorePaths';
 import type { CreateNoteData, Note, NoteFilters, UpdateNoteData } from '../types/note';
 
@@ -40,10 +39,14 @@ export class NoteService {
     return new Date(value as string | number | Date);
   }
 
-  private mapNote(id: string, data: DocumentData): Note {
+  private mapNote(id: string, data: DocumentData, fallbackUserId: string): Note {
     return {
       id,
       ...data,
+      userId:
+        typeof data.userId === 'string' && data.userId.length > 0
+          ? data.userId
+          : fallbackUserId,
       timestamp: this.toDate(data.timestamp),
       createdAt: this.toDate(data.createdAt),
       updatedAt: this.toDate(data.updatedAt),
@@ -89,15 +92,8 @@ export class NoteService {
     return filtered;
   }
 
-  private buildSubscribeConstraints(
-    filters?: NoteFilters,
-    userId?: string
-  ): QueryConstraint[] {
+  private buildSubscribeConstraints(filters?: NoteFilters): QueryConstraint[] {
     const constraints: QueryConstraint[] = [];
-
-    if (userId) {
-      constraints.push(where('userId', '==', userId));
-    }
 
     if (filters?.plantId) {
       constraints.push(where('plantId', '==', filters.plantId));
@@ -132,7 +128,6 @@ export class NoteService {
       }
 
       const noteData = {
-        userId,
         plantId: data.plantId || null,
         spaceId: data.spaceId || null,
         content: data.content,
@@ -143,16 +138,12 @@ export class NoteService {
         updatedAt: Timestamp.now(),
       };
 
-      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+      const { primary } = getUserScopedCollectionRefs(this.collectionName, userId);
       const primaryDocRef = doc(primary);
 
       await setDoc(primaryDocRef, noteData);
 
-      if (secondary) {
-        await setDoc(doc(secondary, primaryDocRef.id), noteData);
-      }
-
-      return this.mapNote(primaryDocRef.id, noteData);
+      return this.mapNote(primaryDocRef.id, noteData, userId);
     } catch (error) {
       console.error('Error creating note:', error);
       throw new Error('Failed to create note');
@@ -165,23 +156,14 @@ export class NoteService {
     }
 
     try {
-      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+      const { primary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
       const primarySnapshot = await getDoc(primary);
 
       if (primarySnapshot.exists()) {
-        return this.mapNote(primarySnapshot.id, primarySnapshot.data());
+        return this.mapNote(primarySnapshot.id, primarySnapshot.data(), userId);
       }
 
-      if (!secondary) {
-        return null;
-      }
-
-      const secondarySnapshot = await getDoc(secondary);
-      if (!secondarySnapshot.exists()) {
-        return null;
-      }
-
-      return this.mapNote(secondarySnapshot.id, secondarySnapshot.data());
+      return null;
     } catch (error) {
       console.error('Error getting note:', error);
       throw new Error('Failed to get note');
@@ -199,7 +181,7 @@ export class NoteService {
         throw new Error('Note not found');
       }
 
-      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+      const { primary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
 
       const updateData: Record<string, unknown> = {
         updatedAt: Timestamp.now(),
@@ -226,10 +208,6 @@ export class NoteService {
       }
 
       await setDoc(primary, updateData, { merge: true });
-
-      if (secondary) {
-        await setDoc(secondary, updateData, { merge: true });
-      }
 
       const updatedNote = await this.getById(id, userId);
       if (!updatedNote) {
@@ -264,12 +242,8 @@ export class NoteService {
         }
       }
 
-      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+      const { primary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
       await deleteDoc(primary);
-
-      if (secondary) {
-        await deleteDoc(secondary);
-      }
     } catch (error) {
       console.error('Error deleting note:', error);
       throw new Error('Failed to delete note');
@@ -282,27 +256,14 @@ export class NoteService {
     }
 
     try {
-      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
-
-      const [primarySnapshot, secondarySnapshot] = await Promise.all([
-        getDocs(primary),
-        secondary
-          ? getDocs(query(secondary, where('userId', '==', userId)))
-          : Promise.resolve(null),
-      ]);
+      const { primary } = getUserScopedCollectionRefs(this.collectionName, userId);
+      const primarySnapshot = await getDocs(primary);
 
       const primaryNotes = primarySnapshot.docs.map((noteDoc) =>
-        this.mapNote(noteDoc.id, noteDoc.data())
+        this.mapNote(noteDoc.id, noteDoc.data(), userId)
       );
 
-      const mergedNotes = secondarySnapshot
-        ? mergeDocumentsById(
-            primaryNotes,
-            secondarySnapshot.docs.map((noteDoc) => this.mapNote(noteDoc.id, noteDoc.data()))
-          )
-        : primaryNotes;
-
-      const sortedNotes = this.sortByTimestamp(mergedNotes);
+      const sortedNotes = this.sortByTimestamp(primaryNotes);
       return this.applyClientFilters(sortedNotes, filters);
     } catch (error) {
       console.error('Error listing notes:', error);
@@ -321,63 +282,26 @@ export class NoteService {
     }
 
     try {
-      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+      const { primary } = getUserScopedCollectionRefs(this.collectionName, userId);
 
       const primaryQuery = query(
         primary,
         ...this.buildSubscribeConstraints(filters)
       );
 
-      let primaryNotes: Note[] = [];
-      let secondaryNotes: Note[] = [];
-
-      const emitNotes = () => {
-        const mergedNotes = secondary
-          ? mergeDocumentsById(primaryNotes, secondaryNotes)
-          : primaryNotes;
-        const sortedNotes = this.sortByTimestamp(mergedNotes);
-        callback(this.applyClientFilters(sortedNotes, filters));
-      };
-
-      const unsubscribePrimary = onSnapshot(
+      return onSnapshot(
         primaryQuery,
         (querySnapshot) => {
-          primaryNotes = querySnapshot.docs.map((noteDoc) =>
-            this.mapNote(noteDoc.id, noteDoc.data())
+          const primaryNotes = querySnapshot.docs.map((noteDoc) =>
+            this.mapNote(noteDoc.id, noteDoc.data(), userId)
           );
-          emitNotes();
+          const sortedNotes = this.sortByTimestamp(primaryNotes);
+          callback(this.applyClientFilters(sortedNotes, filters));
         },
         (error) => {
           console.error('Error in notes subscription:', error);
         }
       );
-
-      if (!secondary) {
-        return unsubscribePrimary;
-      }
-
-      const secondaryQuery = query(
-        secondary,
-        ...this.buildSubscribeConstraints(filters, userId)
-      );
-
-      const unsubscribeSecondary = onSnapshot(
-        secondaryQuery,
-        (querySnapshot) => {
-          secondaryNotes = querySnapshot.docs.map((noteDoc) =>
-            this.mapNote(noteDoc.id, noteDoc.data())
-          );
-          emitNotes();
-        },
-        (error) => {
-          console.error('Error in legacy notes subscription:', error);
-        }
-      );
-
-      return () => {
-        unsubscribePrimary();
-        unsubscribeSecondary();
-      };
     } catch (error) {
       console.error('Error setting up notes subscription:', error);
       return () => {};

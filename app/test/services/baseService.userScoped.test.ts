@@ -16,7 +16,6 @@ const mockState = vi.hoisted(() => ({
   setDoc: vi.fn(),
   updateDoc: vi.fn(),
   where: vi.fn(),
-  isDualMode: vi.fn(() => true),
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -43,10 +42,6 @@ vi.mock('../../lib/firebase/config', () => ({
   db: {},
 }));
 
-vi.mock('../../lib/firebase/firestoreDataModel', () => ({
-  isDualFirestoreDataModel: mockState.isDualMode,
-}));
-
 interface UserScopedDoc extends FirestoreDocument {
   userId: string;
   name: string;
@@ -63,11 +58,10 @@ const makeTimestamp = (iso: string) => ({
   toDate: () => new Date(iso),
 });
 
-describe('BaseService (user scoped, dual mode)', () => {
+describe('BaseService (user scoped, subcollections)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.generatedDocId = 0;
-    mockState.isDualMode.mockReturnValue(true);
 
     mockState.collection.mockImplementation((...args: unknown[]) => ({
       path: args.slice(1).map(String).join('/'),
@@ -129,7 +123,7 @@ describe('BaseService (user scoped, dual mode)', () => {
     });
   });
 
-  it('creates in subcollection and mirrors to legacy collection with identical id', async () => {
+  it('creates only in user subcollection and strips transitional userId field', async () => {
     const service = new UserScopedTestService();
     const createdDocument: UserScopedDoc = {
       id: 'generated-1',
@@ -152,79 +146,39 @@ describe('BaseService (user scoped, dual mode)', () => {
     );
 
     expect(result.data).toEqual(createdDocument);
-    expect(mockState.setDoc).toHaveBeenCalledTimes(2);
-
-    const [primaryWrite, secondaryWrite] = mockState.setDoc.mock.calls;
-    expect(primaryWrite[0]).toMatchObject({ path: 'users/user-1/things/generated-1' });
-    expect(secondaryWrite[0]).toMatchObject({ path: 'things/generated-1' });
-    expect(secondaryWrite[1]).toEqual(primaryWrite[1]);
+    expect(mockState.setDoc).toHaveBeenCalledTimes(1);
+    expect(mockState.setDoc.mock.calls[0][0]).toMatchObject({
+      path: 'users/user-1/things/generated-1',
+    });
+    expect(mockState.setDoc.mock.calls[0][1]).not.toHaveProperty('userId');
   });
 
-  it('merges dual-read results by id with subcollection precedence', async () => {
+  it('hydrates userId from path context when missing in stored subcollection docs', async () => {
     const service = new UserScopedTestService();
 
-    mockState.getDocs
-      .mockResolvedValueOnce({
-        docs: [
-          {
-            id: 'shared',
-            data: () => ({
-              userId: 'user-1',
-              name: 'Primary Shared',
-              value: 1,
-              createdAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-              updatedAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-            }),
-          },
-          {
-            id: 'primary-only',
-            data: () => ({
-              userId: 'user-1',
-              name: 'Primary Only',
-              value: 2,
-              createdAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-              updatedAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-            }),
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        docs: [
-          {
-            id: 'shared',
-            data: () => ({
-              userId: 'user-1',
-              name: 'Legacy Shared',
-              value: 999,
-              createdAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-              updatedAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-            }),
-          },
-          {
-            id: 'legacy-only',
-            data: () => ({
-              userId: 'user-1',
-              name: 'Legacy Only',
-              value: 3,
-              createdAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-              updatedAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
-            }),
-          },
-        ],
-      });
+    mockState.getDocs.mockResolvedValueOnce({
+      docs: [
+        {
+          id: 'sub-only',
+          data: () => ({
+            name: 'Subcollection Only',
+            value: 2,
+            createdAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
+            updatedAt: makeTimestamp('2024-01-01T00:00:00.000Z'),
+          }),
+        },
+      ],
+    });
 
     const result = await service.list(undefined, 'user-1');
 
     expect(result.error).toBeUndefined();
-    expect(result.data).toHaveLength(3);
-
-    const byId = Object.fromEntries((result.data || []).map((docItem) => [docItem.id, docItem]));
-    expect(byId.shared.name).toBe('Primary Shared');
-    expect(byId['primary-only'].name).toBe('Primary Only');
-    expect(byId['legacy-only'].name).toBe('Legacy Only');
+    expect(result.data).toHaveLength(1);
+    expect(result.data?.[0].id).toBe('sub-only');
+    expect(result.data?.[0].userId).toBe('user-1');
   });
 
-  it('updates both models in dual mode with merge writes', async () => {
+  it('updates subcollection document only and strips userId from update payload', async () => {
     const service = new UserScopedTestService();
 
     const existingDocument: UserScopedDoc = {
@@ -246,15 +200,20 @@ describe('BaseService (user scoped, dual mode)', () => {
       .mockResolvedValueOnce({ data: existingDocument })
       .mockResolvedValueOnce({ data: updatedDocument });
 
-    const result = await service.update('doc-1', { name: 'After' }, 'user-1');
+    const result = await service.update(
+      'doc-1',
+      { name: 'After', userId: 'different-user' } as unknown as Partial<
+        Omit<UserScopedDoc, 'id' | 'createdAt' | 'updatedAt'>
+      >,
+      'user-1'
+    );
 
     expect(result.data).toEqual(updatedDocument);
-    expect(mockState.setDoc).toHaveBeenCalledTimes(2);
-
-    const [primaryWrite, secondaryWrite] = mockState.setDoc.mock.calls;
-    expect(primaryWrite[0]).toMatchObject({ path: 'users/user-1/things/doc-1' });
-    expect(primaryWrite[2]).toEqual({ merge: true });
-    expect(secondaryWrite[0]).toMatchObject({ path: 'things/doc-1' });
-    expect(secondaryWrite[2]).toEqual({ merge: true });
+    expect(mockState.setDoc).toHaveBeenCalledTimes(1);
+    expect(mockState.setDoc.mock.calls[0][0]).toMatchObject({
+      path: 'users/user-1/things/doc-1',
+    });
+    expect(mockState.setDoc.mock.calls[0][1]).not.toHaveProperty('userId');
+    expect(mockState.setDoc.mock.calls[0][2]).toEqual({ merge: true });
   });
 });

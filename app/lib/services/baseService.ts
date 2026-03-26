@@ -21,9 +21,7 @@ import {
   getTopLevelDocumentRef,
   getUserScopedCollectionRefs,
   getUserScopedDocumentRefs,
-  mergeDocumentsById,
 } from '../firebase/firestorePaths';
-import { isDualFirestoreDataModel } from '../firebase/firestoreDataModel';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 
 export interface ServiceError {
@@ -111,6 +109,33 @@ export abstract class BaseService<T extends FirestoreDocument> {
     };
   }
 
+  private sanitizeUserScopedPayload(
+    payload: Record<string, unknown>
+  ): Record<string, unknown> {
+    if (!this.userScoped) {
+      return payload;
+    }
+
+    const { userId: _ignoredUserId, ...sanitized } = payload;
+    return sanitized;
+  }
+
+  private hydrateUserScopedDocument(document: T, userId?: string): T {
+    if (!this.userScoped || !userId) {
+      return document;
+    }
+
+    const currentUserId = (document as Record<string, unknown>).userId;
+    if (typeof currentUserId === 'string' && currentUserId.length > 0) {
+      return document;
+    }
+
+    return {
+      ...(document as Record<string, unknown>),
+      userId,
+    } as unknown as T;
+  }
+
   private normalizeComparable(value: unknown): unknown {
     if (value instanceof Date) {
       return value.getTime();
@@ -185,22 +210,13 @@ export abstract class BaseService<T extends FirestoreDocument> {
     filters?: QueryFilters,
     options?: {
       stripUserIdFilter?: boolean;
-      enforceUserId?: string;
     }
   ): QueryConstraint[] {
     const constraints: QueryConstraint[] = [];
 
-    if (options?.enforceUserId) {
-      constraints.push(where('userId', '==', options.enforceUserId));
-    }
-
     if (filters?.where) {
       filters.where.forEach(({ field, operator, value }) => {
         if (field === 'userId' && options?.stripUserIdFilter) {
-          return;
-        }
-
-        if (field === 'userId' && options?.enforceUserId) {
           return;
         }
 
@@ -230,8 +246,11 @@ export abstract class BaseService<T extends FirestoreDocument> {
       }
 
       const now = Timestamp.now();
+      const basePayload = this.sanitizeUserScopedPayload(
+        data as Record<string, unknown>
+      );
       const cleanData = cleanFirestoreData({
-        ...data,
+        ...basePayload,
         createdAt: now,
         updatedAt: now,
       });
@@ -242,14 +261,10 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return { data: createdDoc.data };
       }
 
-      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId!);
+      const { primary } = getUserScopedCollectionRefs(this.collectionName, userId!);
       const primaryDocRef = doc(primary);
 
       await setDoc(primaryDocRef, cleanData);
-
-      if (isDualFirestoreDataModel() && secondary) {
-        await setDoc(doc(secondary, primaryDocRef.id), cleanData);
-      }
 
       const createdDoc = await this.getById(primaryDocRef.id, userId);
       return { data: createdDoc.data };
@@ -279,7 +294,7 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return { error: this.missingUserIdError() };
       }
 
-      const { primary, secondary } = getUserScopedDocumentRefs(
+      const { primary } = getUserScopedDocumentRefs(
         this.collectionName,
         userId,
         id
@@ -287,19 +302,11 @@ export abstract class BaseService<T extends FirestoreDocument> {
 
       const primarySnapshot = await getDoc(primary);
       if (primarySnapshot.exists()) {
-        const document = this.mapDocument(primarySnapshot.id, primarySnapshot.data());
+        const document = this.hydrateUserScopedDocument(
+          this.mapDocument(primarySnapshot.id, primarySnapshot.data()),
+          userId
+        );
         return { data: document };
-      }
-
-      if (isDualFirestoreDataModel() && secondary) {
-        const secondarySnapshot = await getDoc(secondary);
-        if (secondarySnapshot.exists()) {
-          const document = this.mapDocument(
-            secondarySnapshot.id,
-            secondarySnapshot.data()
-          );
-          return { data: document };
-        }
       }
 
       return { error: { code: 'NOT_FOUND', message: 'Document not found' } };
@@ -317,8 +324,11 @@ export abstract class BaseService<T extends FirestoreDocument> {
     userId?: string
   ): Promise<ServiceResult<T>> {
     try {
+      const sanitizedUpdates = this.sanitizeUserScopedPayload(
+        updates as Record<string, unknown>
+      );
       const cleanUpdates = cleanFirestoreData({
-        ...updates,
+        ...sanitizedUpdates,
         updatedAt: Timestamp.now(),
       });
 
@@ -339,17 +349,13 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return { error: existingDocument.error };
       }
 
-      const { primary, secondary } = getUserScopedDocumentRefs(
+      const { primary } = getUserScopedDocumentRefs(
         this.collectionName,
         userId,
         id
       );
 
       await setDoc(primary, cleanUpdates, { merge: true });
-
-      if (isDualFirestoreDataModel() && secondary) {
-        await setDoc(secondary, cleanUpdates, { merge: true });
-      }
 
       const updatedDoc = await this.getById(id, userId);
       return { data: updatedDoc.data };
@@ -372,17 +378,13 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return { error: this.missingUserIdError() };
       }
 
-      const { primary, secondary } = getUserScopedDocumentRefs(
+      const { primary } = getUserScopedDocumentRefs(
         this.collectionName,
         userId,
         id
       );
 
       await deleteDoc(primary);
-
-      if (isDualFirestoreDataModel() && secondary) {
-        await deleteDoc(secondary);
-      }
 
       return { data: undefined };
     } catch (error) {
@@ -411,40 +413,23 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return { error: this.missingUserIdError() };
       }
 
-      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+      const { primary } = getUserScopedCollectionRefs(this.collectionName, userId);
 
       const primaryConstraints = this.buildQueryConstraints(filters, {
         stripUserIdFilter: true,
       });
 
       const primaryQuery = query(primary, ...primaryConstraints);
-
-      const [primarySnapshot, secondarySnapshot] = await Promise.all([
-        getDocs(primaryQuery),
-        isDualFirestoreDataModel() && secondary
-          ? getDocs(
-              query(
-                secondary,
-                ...this.buildQueryConstraints(filters, { enforceUserId: userId })
-              )
-            )
-          : Promise.resolve(null),
-      ]);
+      const primarySnapshot = await getDocs(primaryQuery);
 
       const primaryDocuments = primarySnapshot.docs.map((snapshotDoc) =>
-        this.mapDocument(snapshotDoc.id, snapshotDoc.data())
+        this.hydrateUserScopedDocument(
+          this.mapDocument(snapshotDoc.id, snapshotDoc.data()),
+          userId
+        )
       );
 
-      if (!secondarySnapshot) {
-        return { data: this.finalizeDocuments(primaryDocuments, filters) };
-      }
-
-      const secondaryDocuments = secondarySnapshot.docs.map((snapshotDoc) =>
-        this.mapDocument(snapshotDoc.id, snapshotDoc.data())
-      );
-
-      const mergedDocuments = mergeDocumentsById(primaryDocuments, secondaryDocuments);
-      return { data: this.finalizeDocuments(mergedDocuments, filters) };
+      return { data: this.finalizeDocuments(primaryDocuments, filters) };
     } catch (error) {
       return { error: this.handleError(error) };
     }
@@ -483,62 +468,28 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return () => {};
       }
 
-      const { primary, secondary } = getUserScopedCollectionRefs(this.collectionName, userId);
+      const { primary } = getUserScopedCollectionRefs(this.collectionName, userId);
 
       const primaryConstraints = this.buildQueryConstraints(filters, {
         stripUserIdFilter: true,
       });
       const primaryQuery = query(primary, ...primaryConstraints);
 
-      let primaryDocuments: T[] = [];
-      let secondaryDocuments: T[] = [];
-
-      const emitMerged = () => {
-        const merged = secondary
-          ? mergeDocumentsById(primaryDocuments, secondaryDocuments)
-          : primaryDocuments;
-        callback({ data: this.finalizeDocuments(merged, filters) });
-      };
-
-      const unsubscribePrimary = onSnapshot(
+      return onSnapshot(
         primaryQuery,
         (querySnapshot) => {
-          primaryDocuments = querySnapshot.docs.map((snapshotDoc) =>
-            this.mapDocument(snapshotDoc.id, snapshotDoc.data())
+          const primaryDocuments = querySnapshot.docs.map((snapshotDoc) =>
+            this.hydrateUserScopedDocument(
+              this.mapDocument(snapshotDoc.id, snapshotDoc.data()),
+              userId
+            )
           );
-          emitMerged();
+          callback({ data: this.finalizeDocuments(primaryDocuments, filters) });
         },
         (error) => {
           callback({ error: this.handleError(error) });
         }
       );
-
-      if (!isDualFirestoreDataModel() || !secondary) {
-        return unsubscribePrimary;
-      }
-
-      const secondaryConstraints = this.buildQueryConstraints(filters, {
-        enforceUserId: userId,
-      });
-      const secondaryQuery = query(secondary, ...secondaryConstraints);
-
-      const unsubscribeSecondary = onSnapshot(
-        secondaryQuery,
-        (querySnapshot) => {
-          secondaryDocuments = querySnapshot.docs.map((snapshotDoc) =>
-            this.mapDocument(snapshotDoc.id, snapshotDoc.data())
-          );
-          emitMerged();
-        },
-        (error) => {
-          callback({ error: this.handleError(error) });
-        }
-      );
-
-      return () => {
-        unsubscribePrimary();
-        unsubscribeSecondary();
-      };
     } catch (error) {
       callback({ error: this.handleError(error) });
       return () => {};
@@ -578,55 +529,26 @@ export abstract class BaseService<T extends FirestoreDocument> {
         return () => {};
       }
 
-      const { primary, secondary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
+      const { primary } = getUserScopedDocumentRefs(this.collectionName, userId, id);
 
-      let primaryDocument: T | null = null;
-      let secondaryDocument: T | null = null;
-
-      const emitMerged = () => {
-        const effectiveDocument = primaryDocument || secondaryDocument;
-        if (effectiveDocument) {
-          callback({ data: effectiveDocument });
-          return;
-        }
-
-        callback({ error: { code: 'NOT_FOUND', message: 'Document not found' } });
-      };
-
-      const unsubscribePrimary = onSnapshot(
+      return onSnapshot(
         primary,
         (docSnap) => {
-          primaryDocument = docSnap.exists()
-            ? this.mapDocument(docSnap.id, docSnap.data())
-            : null;
-          emitMerged();
+          if (docSnap.exists()) {
+            const hydratedDocument = this.hydrateUserScopedDocument(
+              this.mapDocument(docSnap.id, docSnap.data()),
+              userId
+            );
+            callback({ data: hydratedDocument });
+            return;
+          }
+
+          callback({ error: { code: 'NOT_FOUND', message: 'Document not found' } });
         },
         (error) => {
           callback({ error: this.handleError(error) });
         }
       );
-
-      if (!isDualFirestoreDataModel() || !secondary) {
-        return unsubscribePrimary;
-      }
-
-      const unsubscribeSecondary = onSnapshot(
-        secondary,
-        (docSnap) => {
-          secondaryDocument = docSnap.exists()
-            ? this.mapDocument(docSnap.id, docSnap.data())
-            : null;
-          emitMerged();
-        },
-        (error) => {
-          callback({ error: this.handleError(error) });
-        }
-      );
-
-      return () => {
-        unsubscribePrimary();
-        unsubscribeSecondary();
-      };
     } catch (error) {
       callback({ error: this.handleError(error) });
       return () => {};

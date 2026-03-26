@@ -6,7 +6,6 @@ import {
   type DocumentReference,
 } from 'firebase/firestore';
 import { db } from './config';
-import { isDualFirestoreDataModel } from './firestoreDataModel';
 
 export const USERS_COLLECTION = 'users';
 
@@ -40,14 +39,8 @@ export const getUserScopedCollectionRefs = (
   collectionName: string,
   userId: string
 ) => {
-  const primary = getUserSubcollectionRef(userId, collectionName);
-  if (!isDualFirestoreDataModel()) {
-    return { primary };
-  }
-
   return {
-    primary,
-    secondary: getTopLevelCollectionRef(collectionName),
+    primary: getUserSubcollectionRef(userId, collectionName),
   };
 };
 
@@ -56,30 +49,7 @@ export const getUserScopedDocumentRefs = (
   userId: string,
   docId: string
 ) => {
-  const primary = getUserSubcollectionDocumentRef(userId, collectionName, docId);
-  if (!isDualFirestoreDataModel()) {
-    return { primary };
-  }
-
   return {
-    primary,
-    secondary: getTopLevelDocumentRef(collectionName, docId),
+    primary: getUserSubcollectionDocumentRef(userId, collectionName, docId),
   };
-};
-
-export const mergeDocumentsById = <T extends { id: string }>(
-  primaryDocuments: T[],
-  secondaryDocuments: T[]
-): T[] => {
-  const merged = new Map<string, T>();
-
-  for (const secondaryDocument of secondaryDocuments) {
-    merged.set(secondaryDocument.id, secondaryDocument);
-  }
-
-  for (const primaryDocument of primaryDocuments) {
-    merged.set(primaryDocument.id, primaryDocument);
-  }
-
-  return Array.from(merged.values());
 };

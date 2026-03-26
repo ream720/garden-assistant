@@ -29,7 +29,7 @@ const resolveEmulatorHost = () => {
 
 const run = async () => {
   const { host, port } = resolveEmulatorHost();
-  const rules = await readFile('firestore.rules', 'utf8');
+  const rules = await readFile('firestore.rules.phase1', 'utf8');
   const testEnv = await initializeTestEnvironment({
     projectId: process.env.PW_FIREBASE_PROJECT_ID || 'grospace-rules-phase1',
     firestore: {

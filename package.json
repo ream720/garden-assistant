@@ -8,7 +8,7 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "test": "vitest --no-watch",
-    "test:rules": "npm run test:rules:phase1 && npm run test:rules:phase2",
+    "test:rules": "npm run test:rules:phase2",
     "test:rules:phase1": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 npx -y firebase-tools@latest emulators:exec --config firebase.rules-test.json --only firestore \"node scripts/test-firestore-rules-phase1.mjs\"",
     "test:rules:phase2": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8081 npx -y firebase-tools@latest emulators:exec --config firebase.rules-test.json --only firestore \"node scripts/test-firestore-rules-phase2.mjs\"",
     "test:ui": "vitest --ui",

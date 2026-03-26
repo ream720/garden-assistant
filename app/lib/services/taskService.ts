@@ -133,7 +133,7 @@ export class TaskService extends BaseService<Task> {
 
     const backfilledResult = await this.update(result.data.id, {
       recurrenceSeriesId: normalizedTask.recurrenceSeriesId,
-    }, result.data.userId);
+    }, taskData.userId);
 
     if (backfilledResult.data) {
       const normalizedBackfilledTask = this.normalizeRecurringTask(backfilledResult.data);

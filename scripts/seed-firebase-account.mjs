@@ -483,7 +483,6 @@ const upsertUserDocIfMissing = async ({
 
 const buildDataset = ({
   rng,
-  uid,
   sizeConfig,
   batchToken,
   now,
@@ -500,7 +499,6 @@ const buildDataset = ({
 
     spaces.push({
       id,
-      userId: uid,
       name:
         i < SPACE_NAMES.length
           ? SPACE_NAMES[i]
@@ -533,7 +531,6 @@ const buildDataset = ({
 
     plants.push({
       id,
-      userId: uid,
       spaceId: chosenSpace.id,
       name: `${randomItem(rng, PLANT_NAMES)} ${randomInt(rng, 1, 99)}`,
       variety: randomItem(rng, VARIETIES),
@@ -571,7 +568,6 @@ const buildDataset = ({
 
     notes.push({
       id: buildDocId('note', batchToken, i),
-      userId: uid,
       plantId: chosenPlant?.id,
       spaceId: chosenSpace?.id,
       content,
@@ -615,7 +611,6 @@ const buildDataset = ({
 
     tasks.push({
       id: buildDocId('task', batchToken, i),
-      userId: uid,
       plantId: chosenPlant?.id,
       spaceId: chosenSpace?.id,
       title: randomItem(rng, TASK_TITLES),
@@ -725,7 +720,6 @@ const run = async () => {
 
   const dataset = buildDataset({
     rng,
-    uid: credentials.uid,
     sizeConfig,
     batchToken,
     now,
@@ -735,7 +729,7 @@ const run = async () => {
     const { id, ...spaceData } = space;
     await createDocument({
       firestoreBaseUrl,
-      collection: 'spaces',
+      collection: `users/${credentials.uid}/spaces`,
       documentId: id,
       data: spaceData,
       idToken: credentials.idToken,
@@ -746,7 +740,7 @@ const run = async () => {
     const { id, ...plantData } = plant;
     await createDocument({
       firestoreBaseUrl,
-      collection: 'plants',
+      collection: `users/${credentials.uid}/plants`,
       documentId: id,
       data: plantData,
       idToken: credentials.idToken,
@@ -757,7 +751,7 @@ const run = async () => {
     const { id, ...noteData } = note;
     await createDocument({
       firestoreBaseUrl,
-      collection: 'notes',
+      collection: `users/${credentials.uid}/notes`,
       documentId: id,
       data: noteData,
       idToken: credentials.idToken,
@@ -768,7 +762,7 @@ const run = async () => {
     const { id, ...taskData } = task;
     await createDocument({
       firestoreBaseUrl,
-      collection: 'tasks',
+      collection: `users/${credentials.uid}/tasks`,
       documentId: id,
       data: taskData,
       idToken: credentials.idToken,

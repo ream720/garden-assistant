@@ -210,8 +210,7 @@ const seedFirestore = async (uid, idToken) => {
     },
   }, idToken);
 
-  await createDocument('spaces', seedSpaceId, {
-    userId: uid,
+  await createDocument(`users/${uid}/spaces`, seedSpaceId, {
     name: seedSpaceName,
     type: 'indoor-tent',
     description: 'Seeded for emulator-backed Playwright tests',

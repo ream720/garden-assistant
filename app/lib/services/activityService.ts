@@ -27,6 +27,12 @@ export class ActivityService {
     filters?: ActivityFilters
   ): Activity[] {
     const activities: Activity[] = [];
+    const fallbackUserId =
+      notes[0]?.userId ||
+      tasks[0]?.userId ||
+      plants[0]?.userId ||
+      spaces[0]?.userId ||
+      'unknown';
 
     // Generate note activities
     notes.forEach((note) => {
@@ -39,7 +45,7 @@ export class ActivityService {
 
       activities.push({
         id: `note-${note.id}`,
-        userId: note.userId,
+        userId: note.userId ?? fallbackUserId,
         type: 'note_created',
         timestamp: note.createdAt,
         isPublic: true, // Notes are public for now
@@ -68,7 +74,7 @@ export class ActivityService {
 
         activities.push({
           id: `task-${task.id}`,
-          userId: task.userId,
+          userId: task.userId ?? fallbackUserId,
           type: 'task_completed',
           timestamp: task.completedAt!,
           isPublic: true,
@@ -91,7 +97,7 @@ export class ActivityService {
 
       activities.push({
         id: `plant-added-${plant.id}`,
-        userId: plant.userId,
+        userId: plant.userId ?? fallbackUserId,
         type: 'plant_added',
         timestamp: plant.createdAt,
         isPublic: true,
@@ -108,7 +114,7 @@ export class ActivityService {
       if (plant.status === 'harvested' && plant.actualHarvestDate) {
         activities.push({
           id: `plant-harvested-${plant.id}`,
-          userId: plant.userId,
+          userId: plant.userId ?? fallbackUserId,
           type: 'plant_harvested',
           timestamp: plant.actualHarvestDate,
           isPublic: true,
@@ -127,7 +133,7 @@ export class ActivityService {
     spaces.forEach((space) => {
       activities.push({
         id: `space-${space.id}`,
-        userId: space.userId,
+        userId: space.userId ?? fallbackUserId,
         type: 'space_created',
         timestamp: space.createdAt,
         isPublic: true,
