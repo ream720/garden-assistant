@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { dismissOnboardingIfVisible } from './onboarding';
 
 /**
  * Log in via the UI by filling the login form.
@@ -36,6 +37,7 @@ export async function loginAsTestUser(page: Page) {
  * Log out by clicking the "Log Out" button in the navbar.
  */
 export async function logout(page: Page) {
+  await dismissOnboardingIfVisible(page);
   await page.getByRole('button', { name: 'Log Out' }).click();
 
   // Wait for redirect back to login

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { dismissOnboardingIfVisible } from './helpers/onboarding';
 
 const UNAUTHENTICATED_STATE = {
   cookies: [],
@@ -42,23 +43,32 @@ test.describe('Responsive Smoke', () => {
 
   test('mobile menu can open and navigate to spaces', async ({ page }) => {
     await page.goto('/dashboard');
-    await page.getByRole('button', { name: 'Open menu' }).click();
+    await dismissOnboardingIfVisible(page);
+    await page.getByTestId('e2e-nav-mobile-trigger').click();
 
-    await page.getByRole('link', { name: 'Spaces' }).click();
+    await page
+      .getByRole('dialog')
+      .getByTestId('e2e-nav-link-spaces')
+      .click();
     await expect(page).toHaveURL(/\/spaces/);
   });
 
-  test('dashboard empty-state messaging is visible on mobile', async ({ page }) => {
+  test('dashboard task and activity sections are visible on mobile', async ({ page }) => {
     await page.goto('/dashboard');
+    await dismissOnboardingIfVisible(page);
 
-    await expect(page.getByText('No upcoming tasks yet')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Activity timeline is empty')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('e2e-dashboard-upcoming-tasks')).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByTestId('e2e-dashboard-recent-activity')).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test('settings form remains usable on mobile viewport', async ({ page }) => {
     await page.goto('/settings');
 
-    const displayName = page.locator('#displayName');
+    const displayName = page.getByTestId('e2e-settings-display-name-input');
     await expect(displayName).toBeVisible();
 
     const original = await displayName.inputValue();

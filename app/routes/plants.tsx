@@ -24,7 +24,7 @@ function PlantsContent() {
 
   return (
     <DashboardLayout title="My Plants">
-      <div className="mb-8">
+      <div className="mb-8" data-testid="e2e-plants-header">
         <p className="text-muted-foreground">
           Manage all your plants across different growing spaces
         </p>

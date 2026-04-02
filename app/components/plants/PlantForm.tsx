@@ -157,7 +157,7 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" data-testid="e2e-plants-form">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -166,7 +166,7 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
               <FormItem>
                 <FormLabel>Plant Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Tomato #1" {...field} />
+                  <Input placeholder="e.g., Tomato #1" {...field} data-testid="e2e-plants-form-name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -180,7 +180,11 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
               <FormItem>
                 <FormLabel>Variety/Cultivar (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Cherry Tomato" {...field} />
+                  <Input
+                    placeholder="e.g., Cherry Tomato"
+                    {...field}
+                    data-testid="e2e-plants-form-variety"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -197,7 +201,7 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
                 <FormLabel>Grow Space</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="e2e-plants-form-space">
                       <SelectValue placeholder="Select a space" />
                     </SelectTrigger>
                   </FormControl>
@@ -231,7 +235,7 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
                 <FormLabel>Status</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="e2e-plants-form-status">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                   </FormControl>
@@ -370,11 +374,16 @@ export function PlantForm({ plant, spaces, defaultSpaceId, onSuccess, onCancel }
 
         <div className="flex justify-end space-x-2">
           {onCancel && (
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              data-testid="e2e-plants-form-cancel"
+            >
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} data-testid="e2e-plants-form-submit">
             {isSubmitting ? 'Saving...' : plant ? 'Update Plant' : 'Add Plant'}
           </Button>
         </div>

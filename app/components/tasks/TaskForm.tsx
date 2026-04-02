@@ -237,7 +237,11 @@ export function TaskForm({
 
   return (
     <div className="w-full max-w-2xl">
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form
+        onSubmit={handleSubmit(handleFormSubmit)}
+        className="space-y-6"
+        data-testid="e2e-task-form"
+      >
         <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2">
@@ -273,6 +277,7 @@ export function TaskForm({
             {...register('title')}
             placeholder="Example: Transplant tomato into 5 gallon pot"
             className={errors.title ? 'border-red-500' : ''}
+            data-testid="e2e-task-form-title"
           />
           <p className="text-sm text-muted-foreground">
             Keep the title action-oriented so it is obvious what needs to happen when the task comes due.
@@ -287,6 +292,7 @@ export function TaskForm({
             {...register('description')}
             placeholder="Optional details such as nutrient amount, tools needed, or what to check when you complete the task."
             rows={3}
+            data-testid="e2e-task-form-description"
           />
           <p className="text-sm text-muted-foreground">
             Add extra detail only if it will help you or someone else complete the task correctly later.
@@ -437,6 +443,7 @@ export function TaskForm({
                     !watchedDueDate && 'text-muted-foreground',
                     errors.dueDate && 'border-red-500'
                   )}
+                  data-testid="e2e-task-form-due-date"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {watchedDueDate ? format(watchedDueDate, 'PPP') : 'Pick a date'}
@@ -466,7 +473,7 @@ export function TaskForm({
         <div className="space-y-2">
           <Label>Priority</Label>
           <Select value={watchedPriority} onValueChange={(value: TaskPriority) => setValue('priority', value)}>
-            <SelectTrigger>
+            <SelectTrigger data-testid="e2e-task-form-priority">
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
             <SelectContent>
@@ -540,10 +547,20 @@ export function TaskForm({
         </div>
 
         <div className="flex justify-end space-x-2 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting || isLoading}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting || isLoading}
+            data-testid="e2e-task-form-cancel"
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting || isLoading}>
+          <Button
+            type="submit"
+            disabled={isSubmitting || isLoading}
+            data-testid="e2e-task-form-submit"
+          >
             {isSubmitting || isLoading ? 'Saving...' : task ? 'Update Task' : 'Create Task'}
           </Button>
         </div>

@@ -39,6 +39,7 @@ export function DashboardLayout({ children, title = 'Dashboard' }: DashboardLayo
                                         size="icon"
                                         className="-ml-2"
                                         aria-label="Open menu"
+                                        data-testid="e2e-nav-mobile-trigger"
                                     >
                                         <Menu className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                                     </Button>
@@ -71,7 +72,7 @@ export function DashboardLayout({ children, title = 'Dashboard' }: DashboardLayo
                 </header>
 
                 {/* Main Scrollable Area */}
-                <main className="flex-1 overflow-y-auto p-4 md:p-8">
+                <main className="flex-1 overflow-y-auto p-4 md:p-8" data-testid="e2e-layout-main">
                     {children}
                 </main>
             </div>

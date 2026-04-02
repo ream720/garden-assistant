@@ -108,7 +108,10 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+    <Card
+      className="hover:shadow-md transition-shadow cursor-pointer"
+      data-testid={`e2e-spaces-card-${space.id}`}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex-1" onClick={handleCardClick}>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -125,7 +128,11 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
+            <Button
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              data-testid={`e2e-spaces-card-menu-${space.id}`}
+            >
               <span className="sr-only">Open menu</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -163,6 +170,7 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
                 <DropdownMenuItem 
                   onSelect={(e) => e.preventDefault()}
                   className="text-destructive"
+                  data-testid={`e2e-spaces-card-delete-${space.id}`}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -187,6 +195,7 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
                     onClick={handleDelete}
                     disabled={isDeleting}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid={`e2e-spaces-card-delete-confirm-${space.id}`}
                   >
                     {isDeleting ? 'Deleting...' : 'Delete'}
                   </AlertDialogAction>
@@ -212,4 +221,3 @@ export function SpaceCard({ space, noteCount, onUpdate, onDelete, onClick }: Spa
     </Card>
   );
 }
-

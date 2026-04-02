@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { dismissOnboardingIfVisible } from './helpers/onboarding';
 
 const UNAUTHENTICATED_STATE = {
   cookies: [],
@@ -82,47 +83,49 @@ test.describe('Navigation & Routing', () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/dashboard');
       await expect(page).toHaveURL(/\/dashboard/);
+      await dismissOnboardingIfVisible(page);
     });
 
     test('sidebar shows Events IA links', async ({ page }) => {
-      const nav = page.locator('nav');
-      await expect(nav.getByRole('link', { name: 'Dashboard' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Spaces' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Plants' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Events' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Profile' })).toBeVisible();
-      await expect(nav.getByRole('link', { name: 'Settings' })).toBeVisible();
+      const nav = page.getByTestId('e2e-nav-sidebar');
+      await expect(nav).toBeVisible();
+      await expect(nav.getByTestId('e2e-nav-link-dashboard')).toBeVisible();
+      await expect(nav.getByTestId('e2e-nav-link-spaces')).toBeVisible();
+      await expect(nav.getByTestId('e2e-nav-link-plants')).toBeVisible();
+      await expect(nav.getByTestId('e2e-nav-link-events')).toBeVisible();
+      await expect(nav.getByTestId('e2e-nav-link-profile')).toBeVisible();
+      await expect(nav.getByTestId('e2e-nav-link-settings')).toBeVisible();
     });
 
     test('can navigate to Events via sidebar', async ({ page }) => {
-      await page.locator('nav').getByRole('link', { name: 'Events' }).click();
+      await page.getByTestId('e2e-nav-link-events').click();
       await expect(page).toHaveURL(/\/events/);
       await expect(page).toHaveTitle(/Events/);
-      await expect(page.getByRole('button', { name: 'Add Note' })).toBeVisible({
+      await expect(page.getByTestId('e2e-events-add-note')).toBeVisible({
         timeout: 10000,
       });
     });
 
     test('can navigate to Spaces via sidebar', async ({ page }) => {
-      await page.locator('nav').getByRole('link', { name: 'Spaces' }).click();
+      await page.getByTestId('e2e-nav-link-spaces').click();
       await expect(page).toHaveURL(/\/spaces/);
       await expect(page).toHaveTitle(/Spaces/);
     });
 
     test('can navigate to Plants via sidebar', async ({ page }) => {
-      await page.locator('nav').getByRole('link', { name: 'Plants' }).click();
+      await page.getByTestId('e2e-nav-link-plants').click();
       await expect(page).toHaveURL(/\/plants/);
       await expect(page).toHaveTitle(/Plants/);
     });
 
     test('can navigate to Profile via sidebar', async ({ page }) => {
-      await page.locator('nav').getByRole('link', { name: 'Profile' }).click();
+      await page.getByTestId('e2e-nav-link-profile').click();
       await expect(page).toHaveURL(/\/profile/);
       await expect(page).toHaveTitle(/Profile/);
     });
 
     test('can navigate to Settings via sidebar', async ({ page }) => {
-      await page.locator('nav').getByRole('link', { name: 'Settings' }).click();
+      await page.getByTestId('e2e-nav-link-settings').click();
       await expect(page).toHaveURL(/\/settings/);
       await expect(page).toHaveTitle(/Settings/);
     });
@@ -130,7 +133,7 @@ test.describe('Navigation & Routing', () => {
     test('legacy /notes route redirects to Events notes view', async ({ page }) => {
       await page.goto('/notes');
       await expect(page).toHaveURL(/\/events\?.*type=notes/);
-      await expect(page.getByRole('button', { name: 'Add Note' })).toBeVisible({
+      await expect(page.getByTestId('e2e-events-add-note')).toBeVisible({
         timeout: 10000,
       });
     });
@@ -138,13 +141,13 @@ test.describe('Navigation & Routing', () => {
     test('legacy /tasks route redirects to Events tasks view', async ({ page }) => {
       await page.goto('/tasks');
       await expect(page).toHaveURL(/\/events\?.*type=tasks/);
-      await expect(page.getByRole('button', { name: 'Add Task' })).toBeVisible({
+      await expect(page.getByTestId('e2e-events-add-task')).toBeVisible({
         timeout: 10000,
       });
     });
 
     test('Log Out button is visible when authenticated', async ({ page }) => {
-      await expect(page.getByRole('button', { name: 'Log Out' })).toBeVisible();
+      await expect(page.getByTestId('e2e-nav-logout-button')).toBeVisible();
     });
   });
 });

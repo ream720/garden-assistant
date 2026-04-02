@@ -96,7 +96,7 @@ export function GardenStatsCard({ plants, spaces, className }: GardenStatsCardPr
   };
 
   return (
-    <Card className={className}>
+    <Card className={className} data-testid="e2e-profile-stats-card">
       <CardHeader>
         <CardTitle className="flex items-center">
           <BarChart3 className="mr-2 h-5 w-5" />

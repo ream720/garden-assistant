@@ -182,7 +182,11 @@ export function NoteForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-6"
+        data-testid="e2e-note-form"
+      >
         <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2">
@@ -222,6 +226,7 @@ export function NoteForm({
                   placeholder="Example: Noticed lower leaves yellowing after feeding. Added photos for comparison."
                   className="min-h-[120px] resize-none"
                   {...field}
+                  data-testid="e2e-note-form-content"
                 />
               </FormControl>
               <p className="text-sm text-muted-foreground">
@@ -243,7 +248,7 @@ export function NoteForm({
               <FormLabel>Category</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="e2e-note-form-category">
                     <SelectValue placeholder="Select a category" />
                   </SelectTrigger>
                 </FormControl>
@@ -271,7 +276,7 @@ export function NoteForm({
               <FormLabel>Grow Space</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="e2e-note-form-space">
                     <SelectValue placeholder="Select a grow space" />
                   </SelectTrigger>
                 </FormControl>
@@ -300,7 +305,7 @@ export function NoteForm({
               <FormLabel>Plant (Optional)</FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="e2e-note-form-plant">
                     <SelectValue placeholder="Select a plant" />
                   </SelectTrigger>
                 </FormControl>
@@ -358,10 +363,15 @@ export function NoteForm({
             variant="outline"
             onClick={onCancel}
             disabled={loading}
+            data-testid="e2e-note-form-cancel"
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={loading}>
+          <Button
+            type="submit"
+            disabled={loading}
+            data-testid="e2e-note-form-submit"
+          >
             {loading ? 'Saving...' : submitLabel}
           </Button>
         </div>

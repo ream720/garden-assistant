@@ -54,7 +54,7 @@ function ProfileContent() {
 
   return (
     <DashboardLayout title="Profile">
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3" data-testid="e2e-profile-root">
         {/* Left Column - User Info */}
         <div className="space-y-6">
           <UserInfoCard user={user} />
@@ -74,6 +74,7 @@ function ProfileContent() {
             title="Recent Activity"
             description="Your recent garden activities"
             emptyMessage="No activity yet. Start adding plants and tracking your garden!"
+            dataTestId="e2e-profile-activity-card"
           />
         </div>
       </div>

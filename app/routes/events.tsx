@@ -1812,6 +1812,7 @@ function EventsContent() {
               variant={taskStatusFilter === 'all' ? 'secondary' : 'ghost'}
               className="h-9"
               aria-label="All statuses"
+              data-testid="e2e-events-task-status-all"
               onClick={() => updateSearchParams({ taskStatus: null })}
             >
               All
@@ -1830,6 +1831,7 @@ function EventsContent() {
               variant={taskStatusFilter === 'pending' ? 'secondary' : 'ghost'}
               className="h-9"
               aria-label="Pending statuses"
+              data-testid="e2e-events-task-status-pending"
               onClick={() => updateSearchParams({ taskStatus: 'pending' })}
             >
               Pending
@@ -1848,6 +1850,7 @@ function EventsContent() {
               variant={taskStatusFilter === 'completed' ? 'secondary' : 'ghost'}
               className="h-9"
               aria-label="Completed statuses"
+              data-testid="e2e-events-task-status-completed"
               onClick={() => updateSearchParams({ taskStatus: 'completed' })}
             >
               Completed
@@ -1872,6 +1875,7 @@ function EventsContent() {
               value={taskSearchQuery}
               onChange={(event) => setTaskSearchQuery(event.target.value)}
               className="h-9 rounded-md border-transparent bg-[#1e293b] pl-9 text-slate-200 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-slate-700"
+              data-testid="e2e-events-search-tasks"
             />
           </div>
 
@@ -1881,6 +1885,7 @@ function EventsContent() {
                 type="button"
                 variant="outline"
                 className="h-9 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
+                data-testid="e2e-events-filters-tasks"
               >
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filters
@@ -1930,6 +1935,7 @@ function EventsContent() {
                     size="sm"
                     variant={taskStatusFilter === 'issues' ? 'secondary' : 'ghost'}
                     className="justify-center"
+                    data-testid="e2e-events-task-filter-issues"
                     onClick={() => updateSearchParams({ taskStatus: 'issues' })}
                   >
                     Issues
@@ -1941,6 +1947,7 @@ function EventsContent() {
                       taskStatusFilter === 'dueSoon' ? 'secondary' : 'ghost'
                     }
                     className="justify-center"
+                    data-testid="e2e-events-task-filter-due-soon"
                     onClick={() => updateSearchParams({ taskStatus: 'dueSoon' })}
                   >
                     Due Soon
@@ -1950,6 +1957,7 @@ function EventsContent() {
                     size="sm"
                     variant={taskStatusFilter === 'overdue' ? 'secondary' : 'ghost'}
                     className="justify-center"
+                    data-testid="e2e-events-task-filter-overdue"
                     onClick={() => updateSearchParams({ taskStatus: 'overdue' })}
                   >
                     Overdue
@@ -1967,7 +1975,10 @@ function EventsContent() {
                     updateSearchParams({ taskPriority: value })
                   }
                 >
-                  <SelectTrigger className="h-9 border-slate-700 bg-[#0f172a] text-slate-200">
+                  <SelectTrigger
+                    className="h-9 border-slate-700 bg-[#0f172a] text-slate-200"
+                    data-testid="e2e-events-task-filter-priority"
+                  >
                     <SelectValue placeholder="All priorities" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2037,7 +2048,10 @@ function EventsContent() {
                     updateSearchParams({ taskGroupBy: value })
                   }
                 >
-                  <SelectTrigger className="h-9 border-slate-700 bg-[#0f172a] text-slate-200">
+                  <SelectTrigger
+                    className="h-9 border-slate-700 bg-[#0f172a] text-slate-200"
+                    data-testid="e2e-events-task-filter-group-by"
+                  >
                     <SelectValue placeholder="No grouping" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2053,6 +2067,7 @@ function EventsContent() {
             <Button
               variant="ghost"
               className="h-9 text-slate-400 hover:bg-slate-800 hover:text-white"
+              data-testid="e2e-events-clear-filters-tasks"
               onClick={() => {
                 setTaskSearchQuery('');
                 updateSearchParams({
@@ -2206,6 +2221,7 @@ function EventsContent() {
               value={noteSearchQuery}
               onChange={(event) => setNoteSearchQuery(event.target.value)}
               className="h-9 rounded-md border-transparent bg-[#1e293b] pl-9 text-slate-200 placeholder:text-slate-500 focus-visible:ring-1 focus-visible:ring-slate-700"
+              data-testid="e2e-events-search-notes"
             />
           </div>
 
@@ -2215,6 +2231,7 @@ function EventsContent() {
                 type="button"
                 variant="outline"
                 className="h-9 border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
+                data-testid="e2e-events-filters-notes"
               >
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filters
@@ -2260,7 +2277,10 @@ function EventsContent() {
                   value={noteCategoryFilter}
                   onValueChange={(value) => updateSearchParams({ category: value })}
                 >
-                  <SelectTrigger className="h-9 border-slate-700 bg-[#0f172a] text-slate-200">
+                  <SelectTrigger
+                    className="h-9 border-slate-700 bg-[#0f172a] text-slate-200"
+                    data-testid="e2e-events-note-filter-category"
+                  >
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
                   <SelectContent>
@@ -2328,6 +2348,7 @@ function EventsContent() {
             <Button
               variant="ghost"
               className="h-9 text-slate-400 hover:bg-slate-800 hover:text-white"
+              data-testid="e2e-events-clear-filters-notes"
               onClick={() => {
                 setNoteSearchQuery('');
                 updateSearchParams({
@@ -2363,7 +2384,10 @@ function EventsContent() {
   };
   return (
     <DashboardLayout title="Events">
-      <div className="-m-4 flex h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-[#0B1120] font-sans text-slate-200 md:-m-8">
+      <div
+        className="-m-4 flex h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-[#0B1120] font-sans text-slate-200 md:-m-8"
+        data-testid="e2e-events-root"
+      >
         <div className="flex w-full flex-col border-r border-[#1e293b] bg-[#0f172a] transition-all duration-300 lg:w-1/2">
           <div className="p-6 pb-2">
             <div className="mb-6 flex items-center gap-3 text-sm font-medium text-slate-400">
@@ -2375,6 +2399,7 @@ function EventsContent() {
                   handleViewChange(activeView === 'tasks' ? 'notes' : 'tasks')
                 }
                 className="relative inline-flex h-6 w-11 items-center rounded-full bg-slate-700 transition-colors focus:outline-none"
+                data-testid="e2e-events-view-toggle"
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${activeView === 'tasks' ? 'translate-x-6' : 'translate-x-1'}`}
@@ -2391,6 +2416,7 @@ function EventsContent() {
                   <Button
                     onClick={handleCreateTaskClick}
                     className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+                    data-testid="e2e-events-add-task"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Task
@@ -2409,6 +2435,7 @@ function EventsContent() {
                   <Button
                     onClick={() => setCreateNoteOpen(true)}
                     className="bg-emerald-500 text-slate-950 hover:bg-emerald-400"
+                    data-testid="e2e-events-add-note"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Note
@@ -2462,6 +2489,7 @@ function EventsContent() {
                         <div
                           key={task.id}
                           onClick={() => selectTask(task.id)}
+                          data-testid={`e2e-events-task-card-${task.id}`}
                           className={`group cursor-pointer rounded-xl border p-4 transition-all ${
                             isSelected
                               ? 'border-slate-700 bg-[#1e293b]'
@@ -2479,6 +2507,7 @@ function EventsContent() {
                                     onClick={(event) =>
                                       openTaskCompletionFromList(event, task)
                                     }
+                                    data-testid={`e2e-events-task-mark-complete-${task.id}`}
                                     className="rounded-full p-0.5 text-slate-600 transition-colors hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
                                     aria-label={`Mark ${task.title} complete`}
                                     title="Mark complete"
@@ -2523,6 +2552,7 @@ function EventsContent() {
                                     onClick={(event) => event.stopPropagation()}
                                     className="h-8 w-8 text-slate-500 hover:bg-slate-700/60 hover:text-slate-200"
                                     aria-label={`Task actions for ${task.title}`}
+                                    data-testid={`e2e-events-task-actions-${task.id}`}
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
@@ -2596,6 +2626,7 @@ function EventsContent() {
                   <div
                     key={note.id}
                     onClick={() => selectNote(note.id)}
+                    data-testid={`e2e-events-note-card-${note.id}`}
                     className={`group cursor-pointer rounded-xl border p-4 transition-all ${
                       isSelected
                         ? 'border-slate-700 bg-[#1e293b]'

@@ -44,17 +44,18 @@ const ensureAdminApp = () => {
   });
 };
 
-const incrementCount = (counts, userId, collectionName, value = 1) => {
-  if (!counts.has(userId)) {
-    counts.set(userId, new Map());
+const ensureNestedSet = (container, userId, collectionName) => {
+  if (!container.has(userId)) {
+    container.set(userId, new Map());
   }
 
-  const userCounts = counts.get(userId);
-  userCounts.set(collectionName, (userCounts.get(collectionName) || 0) + value);
-};
+  const byCollection = container.get(userId);
+  if (!byCollection.has(collectionName)) {
+    byCollection.set(collectionName, new Set());
+  }
 
-const getCount = (counts, userId, collectionName) =>
-  counts.get(userId)?.get(collectionName) || 0;
+  return byCollection.get(collectionName);
+};
 
 const withBatchedWrites = async (performWrites) => {
   const db = getFirestore();
@@ -136,9 +137,9 @@ const migrateTopLevelToUserSubcollections = async ({ dryRun }) => {
   return { migrated, skippedMissingUserId };
 };
 
-const getTopLevelCounts = async () => {
+const getTopLevelDocSets = async () => {
   const db = getFirestore();
-  const topLevelCounts = new Map();
+  const topLevelDocSets = new Map();
   const userIds = new Set();
   let skippedMissingUserId = 0;
 
@@ -153,11 +154,11 @@ const getTopLevelCounts = async () => {
       }
 
       userIds.add(userId);
-      incrementCount(topLevelCounts, userId, collectionName);
+      ensureNestedSet(topLevelDocSets, userId, collectionName).add(docSnap.id);
     }
   }
 
-  return { topLevelCounts, userIds, skippedMissingUserId };
+  return { topLevelDocSets, userIds, skippedMissingUserId };
 };
 
 const getAllUserIds = async (seedUserIds = new Set()) => {
@@ -172,41 +173,65 @@ const getAllUserIds = async (seedUserIds = new Set()) => {
   return allUserIds;
 };
 
-const getSubcollectionCounts = async (userIds) => {
+const getSubcollectionDocSets = async (userIds) => {
   const db = getFirestore();
-  const subcollectionCounts = new Map();
+  const subcollectionDocSets = new Map();
 
   for (const userId of userIds) {
     for (const collectionName of COLLECTIONS) {
       const snapshot = await db.collection('users').doc(userId).collection(collectionName).get();
-      incrementCount(subcollectionCounts, userId, collectionName, snapshot.size);
+      for (const docSnap of snapshot.docs) {
+        ensureNestedSet(subcollectionDocSets, userId, collectionName).add(docSnap.id);
+      }
     }
   }
 
-  return subcollectionCounts;
+  return subcollectionDocSets;
 };
+
+const getDocIds = (docSets, userId, collectionName) =>
+  docSets.get(userId)?.get(collectionName) || new Set();
 
 const verifyParity = async () => {
   const {
-    topLevelCounts,
+    topLevelDocSets,
     userIds: topLevelUserIds,
     skippedMissingUserId,
-  } = await getTopLevelCounts();
+  } = await getTopLevelDocSets();
   const allUserIds = await getAllUserIds(topLevelUserIds);
-  const subcollectionCounts = await getSubcollectionCounts(allUserIds);
+  const subcollectionDocSets = await getSubcollectionDocSets(allUserIds);
   const mismatches = [];
+  const extras = [];
 
   for (const userId of allUserIds) {
     for (const collectionName of COLLECTIONS) {
-      const topLevelCount = getCount(topLevelCounts, userId, collectionName);
-      const subcollectionCount = getCount(subcollectionCounts, userId, collectionName);
+      const topLevelIds = getDocIds(topLevelDocSets, userId, collectionName);
+      const subcollectionIds = getDocIds(subcollectionDocSets, userId, collectionName);
 
-      if (topLevelCount !== subcollectionCount) {
+      const missingInSubcollection = [];
+      for (const topLevelId of topLevelIds) {
+        if (!subcollectionIds.has(topLevelId)) {
+          missingInSubcollection.push(topLevelId);
+        }
+      }
+
+      if (missingInSubcollection.length > 0) {
         mismatches.push({
           userId,
           collectionName,
-          topLevelCount,
-          subcollectionCount,
+          missingCount: missingInSubcollection.length,
+          sampleMissingIds: missingInSubcollection.slice(0, 10),
+          topLevelCount: topLevelIds.size,
+          subcollectionCount: subcollectionIds.size,
+        });
+      }
+
+      if (subcollectionIds.size > topLevelIds.size) {
+        extras.push({
+          userId,
+          collectionName,
+          topLevelCount: topLevelIds.size,
+          subcollectionCount: subcollectionIds.size,
         });
       }
     }
@@ -214,6 +239,7 @@ const verifyParity = async () => {
 
   return {
     mismatches,
+    extras,
     skippedMissingUserId,
     userCount: allUserIds.size,
   };
@@ -221,7 +247,7 @@ const verifyParity = async () => {
 
 const finalizeMigration = async ({ dryRun }) => {
   const db = getFirestore();
-  const { userIds: topLevelUserIds } = await getTopLevelCounts();
+  const { userIds: topLevelUserIds } = await getTopLevelDocSets();
   const allUserIds = await getAllUserIds(topLevelUserIds);
 
   let strippedUserIdFields = 0;
@@ -300,7 +326,7 @@ const run = async () => {
 
   const verification = await verifyParity();
   console.log(
-    `[migrate-user-subcollections] verified_users=${verification.userCount} mismatches=${verification.mismatches.length} skipped_missing_userId=${verification.skippedMissingUserId}`
+    `[migrate-user-subcollections] verified_users=${verification.userCount} mismatches=${verification.mismatches.length} extras=${verification.extras.length} skipped_missing_userId=${verification.skippedMissingUserId}`
   );
 
   if (verification.mismatches.length > 0) {
@@ -311,6 +337,14 @@ const run = async () => {
     });
 
     throw new Error('Verification failed: source/target mismatches found');
+  }
+
+  if (verification.extras.length > 0) {
+    verification.extras.slice(0, 25).forEach((extra) => {
+      console.log(
+        `[extra] user=${extra.userId} collection=${extra.collectionName} topLevel=${extra.topLevelCount} subcollection=${extra.subcollectionCount}`
+      );
+    });
   }
 
   if (!options.finalize) {

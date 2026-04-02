@@ -148,7 +148,7 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="e2e-plants-list">
       {/* Header with filters and add button */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex flex-col sm:flex-row gap-2 flex-1">
@@ -159,13 +159,14 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-8"
+              data-testid="e2e-plants-search-input"
             />
           </div>
           <Select
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as PlantStatusFilter)}
           >
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]" data-testid="e2e-plants-status-filter">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -180,7 +181,7 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
           </Select>
         </div>
         {showAddButton && (
-          <Button onClick={() => setShowAddDialog(true)}>
+          <Button onClick={() => setShowAddDialog(true)} data-testid="e2e-plants-add-button">
             <Sprout className="mr-2 h-4 w-4" />
             Add Plant
           </Button>
@@ -208,7 +209,7 @@ export function PlantList({ spaceId, spaces, showAddButton = true }: PlantListPr
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="e2e-plants-grid">
           {filteredPlants.map((plant) => (
             <PlantCard
               key={plant.id}

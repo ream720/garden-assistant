@@ -83,7 +83,7 @@ function SettingsContent() {
 
   return (
     <DashboardLayout title="Settings">
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-3xl space-y-6" data-testid="e2e-settings-root">
         {/* Profile Section */}
         <Card>
           <form onSubmit={handleUpdateProfile}>
@@ -115,6 +115,7 @@ function SettingsContent() {
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Your Name"
                   required
+                  data-testid="e2e-settings-display-name-input"
                 />
                 <p className="text-xs text-muted-foreground mb-6">
                   This name will appear on your Profile.
@@ -125,6 +126,7 @@ function SettingsContent() {
               <Button
                 type="submit"
                 disabled={isSaving || displayName === user.displayName}
+                data-testid="e2e-settings-save-profile"
               >
                 {isSaving ? (
                   'Saving...'
@@ -152,6 +154,7 @@ function SettingsContent() {
                 variant={theme === 'light' ? 'default' : 'outline'}
                 className="w-full justify-start"
                 onClick={() => setTheme('light')}
+                data-testid="e2e-settings-theme-light"
               >
                 <Sun className="mr-2 h-4 w-4" /> Light
               </Button>
@@ -159,6 +162,7 @@ function SettingsContent() {
                 variant={theme === 'dark' ? 'default' : 'outline'}
                 className="w-full justify-start"
                 onClick={() => setTheme('dark')}
+                data-testid="e2e-settings-theme-dark"
               >
                 <Moon className="mr-2 h-4 w-4" /> Dark
               </Button>
@@ -166,6 +170,7 @@ function SettingsContent() {
                 variant={theme === 'system' ? 'default' : 'outline'}
                 className="w-full justify-start"
                 onClick={() => setTheme('system')}
+                data-testid="e2e-settings-theme-system"
               >
                 <Monitor className="mr-2 h-4 w-4" /> System
               </Button>
@@ -206,6 +211,7 @@ function SettingsContent() {
                 variant="outline"
                 size="sm"
                 onClick={() => useAuthStore.getState().signOut()}
+                data-testid="e2e-settings-sign-out"
               >
                 <LogOut className="mr-2 h-4 w-4" /> Sign Out
               </Button>

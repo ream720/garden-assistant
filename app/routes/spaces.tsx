@@ -12,7 +12,7 @@ export function meta() {
 function SpacesContent() {
   return (
     <DashboardLayout title="Grow Spaces">
-      <div className="mb-8">
+      <div className="mb-8" data-testid="e2e-spaces-header">
         <p className="text-muted-foreground">
           Manage your growing environments
         </p>

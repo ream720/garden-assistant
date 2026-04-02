@@ -28,6 +28,7 @@ interface ActivityFeedProps {
   showFilters?: boolean;
   defaultFilter?: FilterOption;
   onFilterChange?: (filter: FilterOption, types: ActivityTypeEnum[]) => void;
+  dataTestId?: string;
 }
 
 export function ActivityFeed({
@@ -40,6 +41,7 @@ export function ActivityFeed({
   showFilters = false,
   defaultFilter = 'all',
   onFilterChange,
+  dataTestId,
 }: ActivityFeedProps) {
   const [activeFilter, setActiveFilter] = useState<FilterOption>(defaultFilter);
 
@@ -60,7 +62,7 @@ export function ActivityFeed({
     : activities;
 
   return (
-    <Card className={className}>
+    <Card className={className} data-testid={dataTestId}>
       <CardHeader>
         <CardTitle className="flex items-center">
           <Activity className="mr-2 h-4 w-4" />

@@ -1,6 +1,6 @@
 # Test Gates Backlog
 
-Last updated: March 16, 2026 (post auth audit + E2E gap implementation pass)
+Last updated: March 25, 2026 (phase-3 migration finalize + E2E stabilization pass)
 
 ## Events Refactor Test Alignment
 
@@ -9,10 +9,11 @@ Last updated: March 16, 2026 (post auth audit + E2E gap implementation pass)
 ## Release Gates (Pre-Invite / Pre-Launch)
 
 - [x] Firebase Auth audit: inventory app + test auth flows, verify provider/rules/session assumptions, and document quota risk points with mitigations.
-- [ ] E2E auth stability: run full local/CI validation on emulator-backed suite and confirm no quota/rate-limit regressions.
-- [ ] Shakedown runbook: log `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, and full `npm run test:e2e:emulator` before invite waves.
-  - Local status (2026-03-16): `typecheck`, `lint`, `test`, and `build` pass; full emulator-backed run fails in this restricted runner due localhost port `EPERM`.
-  - Pending gate evidence: full zero-failure emulator-backed Playwright run logs from unrestricted local runner and CI.
+- [x] Firestore phase-2 model finalization in cloud project (`grospace-d7a36`): finalize dry-run, finalize write, and verify run completed with `mismatches=0`.
+- [x] E2E auth stability: full local emulator-backed validation completed with zero failures (`87 passed`, `1 skipped`) after selector + onboarding stabilization.
+- [x] Shakedown runbook: logged `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`, `npm run test:rules`, and full `npm run test:e2e` evidence in [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md).
+  - Local status (2026-03-25): full gate set passed in emulator mode.
+  - Pending gate evidence: CI command artifacts + final invite-wave sign-off.
 
 ## High-Priority MVP Coverage Gaps
 
@@ -43,6 +44,9 @@ Last updated: March 16, 2026 (post auth audit + E2E gap implementation pass)
 - [x] Resilience/responsive smoke automation (`e2e/responsive-resilience.spec.ts`).
 - [x] New-signup onboarding regression coverage (`e2e/auth-edge.spec.ts` guided setup visibility + reopen path).
 - [x] Dashboard task-query stabilization: removed index-heavy default ordering and sorted task lists client-side for startup resilience.
+- [x] Phase-3 Firestore finalize execution logged (`finalize:dry`, `finalize`, `verify`) with `mismatches=0`.
+- [x] Phase-3 E2E selector-contract stabilization across Dashboard/Events/Nav/Profile/Settings/Plants/Spaces plus onboarding-aware helpers.
+- [x] Full emulator-backed Playwright gate green (`npm run test:e2e`: `87 passed`, `1 skipped`, `0 failed`).
 
 ## Additional Test Backlog
 

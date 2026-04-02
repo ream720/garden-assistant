@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -26,6 +26,80 @@ const args = [
   '--only',
   'auth,firestore,storage',
 ];
+
+const parsePort = (hostWithPort, fallbackPort) => {
+  const segments = hostWithPort?.split(':');
+  const maybePort = segments?.at(-1);
+  const parsed = Number.parseInt(maybePort || '', 10);
+  return Number.isFinite(parsed) ? parsed : fallbackPort;
+};
+
+const getListeningPids = (port) => {
+  try {
+    const output = execSync(`lsof -ti tcp:${port} -sTCP:LISTEN`, {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
+
+    if (!output) {
+      return [];
+    }
+
+    return output.split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
+};
+
+const getCommandForPid = (pid) => {
+  try {
+    return execSync(`ps -p ${pid} -o command=`, {
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
+  } catch {
+    return '';
+  }
+};
+
+const stopStaleFirestoreEmulators = () => {
+  const firestorePort = parsePort(
+    process.env.PW_FIRESTORE_EMULATOR_HOST ||
+      process.env.VITE_FIRESTORE_EMULATOR_HOST ||
+      '127.0.0.1:8080',
+    8080
+  );
+  const listeningPids = getListeningPids(firestorePort);
+
+  listeningPids.forEach((pidValue) => {
+    const pid = Number.parseInt(pidValue, 10);
+    if (!Number.isFinite(pid)) {
+      return;
+    }
+
+    const commandForPid = getCommandForPid(pid);
+    const isFirestoreEmulatorProcess =
+      commandForPid.includes('cloud-firestore-emulator') &&
+      commandForPid.includes('--port');
+
+    if (!isFirestoreEmulatorProcess) {
+      return;
+    }
+
+    try {
+      process.kill(pid, 'SIGTERM');
+      console.log(
+        `[emulators] Stopped stale Firestore emulator process on port ${firestorePort} (pid=${pid}).`
+      );
+    } catch {
+      // Ignore and let firebase-tools report if port remains unavailable.
+    }
+  });
+};
+
+stopStaleFirestoreEmulators();
 
 const child = spawn(command, args, {
   cwd: process.cwd(),

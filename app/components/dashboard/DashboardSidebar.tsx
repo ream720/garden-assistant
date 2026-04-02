@@ -26,15 +26,35 @@ export function DashboardSidebar({ className, onNavigate }: DashboardSidebarProp
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Spaces', href: '/spaces', icon: Building2 },
-    { name: 'Plants', href: '/plants', icon: Sprout },
-    { name: 'Events', href: '/events', icon: CalendarDays },
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: LayoutDashboard,
+      testId: 'e2e-nav-link-dashboard',
+    },
+    {
+      name: 'Spaces',
+      href: '/spaces',
+      icon: Building2,
+      testId: 'e2e-nav-link-spaces',
+    },
+    {
+      name: 'Plants',
+      href: '/plants',
+      icon: Sprout,
+      testId: 'e2e-nav-link-plants',
+    },
+    {
+      name: 'Events',
+      href: '/events',
+      icon: CalendarDays,
+      testId: 'e2e-nav-link-events',
+    },
   ];
 
   const accountItems = [
-    { name: 'Profile', href: '/profile', icon: User },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Profile', href: '/profile', icon: User, testId: 'e2e-nav-link-profile' },
+    { name: 'Settings', href: '/settings', icon: Settings, testId: 'e2e-nav-link-settings' },
   ];
 
   return (
@@ -51,7 +71,7 @@ export function DashboardSidebar({ className, onNavigate }: DashboardSidebarProp
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto" data-testid="e2e-nav-sidebar">
         <div className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">My Garden</div>
 
         {navItems.map((item) => {
@@ -61,6 +81,7 @@ export function DashboardSidebar({ className, onNavigate }: DashboardSidebarProp
               key={item.href}
               to={item.href}
               onClick={onNavigate}
+              data-testid={item.testId}
               className={cn(
                 'flex items-center px-3 py-2.5 rounded-lg font-medium transition-colors group',
                 active
@@ -90,6 +111,7 @@ export function DashboardSidebar({ className, onNavigate }: DashboardSidebarProp
               key={item.href}
               to={item.href}
               onClick={onNavigate}
+              data-testid={item.testId}
               className={cn(
                 'flex items-center px-3 py-2.5 rounded-lg font-medium transition-colors group',
                 active
@@ -129,6 +151,7 @@ export function DashboardSidebar({ className, onNavigate }: DashboardSidebarProp
           variant="ghost"
           className="mt-2 w-full justify-start text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
           onClick={() => signOut()}
+          data-testid="e2e-nav-logout-button"
         >
           <LogOut className="mr-3 h-5 w-5" />
           Log Out

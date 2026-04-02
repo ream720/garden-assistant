@@ -121,7 +121,7 @@ export function SpaceList({ onSpaceSelect }: SpaceListProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="e2e-spaces-list">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -130,12 +130,13 @@ export function SpaceList({ onSpaceSelect }: SpaceListProps) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8"
+            data-testid="e2e-spaces-search-input"
           />
         </div>
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button data-testid="e2e-spaces-add-button">
               <Plus className="mr-2 h-4 w-4" />
               New Space
             </Button>
@@ -185,7 +186,7 @@ export function SpaceList({ onSpaceSelect }: SpaceListProps) {
             </p>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button data-testid="e2e-spaces-add-button-empty">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Space
                 </Button>
@@ -208,7 +209,7 @@ export function SpaceList({ onSpaceSelect }: SpaceListProps) {
           )}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="e2e-spaces-grid">
           {filteredSpaces.map((space) => (
             <SpaceCard
               key={space.id}

@@ -1,19 +1,39 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../ui/form';
 import type { GrowSpace, SpaceType } from '../../lib/types';
 
 const spaceFormSchema = z.object({
-  name: z.string().min(1, 'Space name is required').max(100, 'Name must be less than 100 characters'),
-  type: z.enum(['indoor-tent', 'outdoor-bed', 'greenhouse', 'hydroponic', 'container'] as const),
-  description: z.string().max(500, 'Description must be less than 500 characters').optional(),
+  name: z
+    .string()
+    .min(1, 'Space name is required')
+    .max(100, 'Name must be less than 100 characters'),
+  type: z.enum(
+    ['indoor-tent', 'outdoor-bed', 'greenhouse', 'hydroponic', 'container'] as const
+  ),
+  description: z
+    .string()
+    .max(500, 'Description must be less than 500 characters')
+    .optional(),
 });
 
 type SpaceFormData = z.infer<typeof spaceFormSchema>;
@@ -33,7 +53,12 @@ const spaceTypeOptions: { value: SpaceType; label: string }[] = [
   { value: 'container', label: 'Container' },
 ];
 
-export function SpaceForm({ space, onSubmit, onCancel, isLoading = false }: SpaceFormProps) {
+export function SpaceForm({
+  space,
+  onSubmit,
+  onCancel,
+  isLoading = false,
+}: SpaceFormProps) {
   const form = useForm<SpaceFormData>({
     resolver: zodResolver(spaceFormSchema),
     defaultValues: {
@@ -56,7 +81,11 @@ export function SpaceForm({ space, onSubmit, onCancel, isLoading = false }: Spac
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-6"
+        data-testid="e2e-spaces-form"
+      >
         <FormField
           control={form.control}
           name="name"
@@ -64,10 +93,11 @@ export function SpaceForm({ space, onSubmit, onCancel, isLoading = false }: Spac
             <FormItem>
               <FormLabel>Space Name</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="Enter space name" 
-                  {...field} 
+                <Input
+                  placeholder="Enter space name"
+                  {...field}
                   disabled={isLoading}
+                  data-testid="e2e-spaces-form-name"
                 />
               </FormControl>
               <FormMessage />
@@ -81,13 +111,13 @@ export function SpaceForm({ space, onSubmit, onCancel, isLoading = false }: Spac
           render={({ field }) => (
             <FormItem>
               <FormLabel>Space Type</FormLabel>
-              <Select 
-                onValueChange={field.onChange} 
+              <Select
+                onValueChange={field.onChange}
                 defaultValue={field.value}
                 disabled={isLoading}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="e2e-spaces-form-type">
                     <SelectValue placeholder="Select space type" />
                   </SelectTrigger>
                 </FormControl>
@@ -111,11 +141,12 @@ export function SpaceForm({ space, onSubmit, onCancel, isLoading = false }: Spac
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea 
+                <Textarea
                   placeholder="Enter space description"
                   className="resize-none"
                   {...field}
                   disabled={isLoading}
+                  data-testid="e2e-spaces-form-description"
                 />
               </FormControl>
               <FormMessage />
@@ -124,15 +155,20 @@ export function SpaceForm({ space, onSubmit, onCancel, isLoading = false }: Spac
         />
 
         <div className="flex justify-end space-x-2">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={onCancel}
             disabled={isLoading}
+            data-testid="e2e-spaces-form-cancel"
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            data-testid="e2e-spaces-form-submit"
+          >
             {isLoading ? 'Saving...' : space ? 'Update Space' : 'Create Space'}
           </Button>
         </div>

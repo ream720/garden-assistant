@@ -1,18 +1,20 @@
 # Engineering Backlog Index
 
-Last updated: March 21, 2026 (events focused-pass findings added)
+Last updated: March 25, 2026 (phase-3 migration finalize + full gate pass)
 
 Use this file as the control-plane backlog. Detailed work lives in focused docs linked below.
 
 ## Now
 
 - [x] Run Firebase Auth audit and capture quota-risk mitigations in release docs. See [`FIREBASE_AUTH_AUDIT.md`](./FIREBASE_AUTH_AUDIT.md).
-- [ ] Run pre-invite shakedown with gate command log, including full emulator-backed Playwright runs. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+- [x] Run pre-invite shakedown with gate command log, including full emulator-backed Playwright runs. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md) and [`PREINVITE_SHAKEDOWN.md`](./PREINVITE_SHAKEDOWN.md).
 - [x] Complete remaining MVP E2E coverage gaps (note photos, profile/settings, auth edge cases, resilience/responsive smoke). See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
+- [x] Finalize Firestore phase-2 model in cloud (`users/{uid}/...` only) and complete migration verification. See [`TEST_GATES_BACKLOG.md`](./TEST_GATES_BACKLOG.md).
 
 Recent milestone (completed):
 
 - [x] Emulator-first E2E workflow stabilized (startup/seed/auth bootstrap path) and documented in [`E2E_EMULATOR_RUNBOOK.md`](./E2E_EMULATOR_RUNBOOK.md).
+- [x] Phase-3 release-gate stabilization completed: migration finalize+verify and full emulator-backed Playwright suite green.
 
 ## Next
 

@@ -312,13 +312,16 @@ test.describe('Plants', () => {
       await harvestButton.click();
 
       // Harvest dialog should appear
-      await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-      await expect(page.getByText('Record Harvest')).toBeVisible();
-      await expect(page.getByText('Harvest Date')).toBeVisible();
+      const harvestDialog = page.getByRole('dialog');
+      await expect(harvestDialog).toBeVisible({ timeout: 5000 });
+      await expect(
+        harvestDialog.getByRole('heading', { name: 'Record Harvest', exact: true })
+      ).toBeVisible();
+      await expect(harvestDialog.getByText('Harvest Date', { exact: true })).toBeVisible();
 
       // Cancel — we don't want to actually harvest a real plant
-      await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
+      await harvestDialog.getByRole('button', { name: 'Cancel' }).click();
+      await expect(harvestDialog).not.toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -399,14 +402,23 @@ test.describe('Plants', () => {
     // 8. Clean up (go back to list and delete)
     await page.goto('/plants');
     await page.waitForTimeout(2000);
-    const plantCard = page.locator('[class*="card"], [class*="Card"]').filter({ hasText: testPlantName });
-    const menuButton = plantCard.locator('button:has(svg)').last();
+    const plantCard = page
+      .locator('[data-testid^="e2e-plants-card-"]')
+      .filter({ hasText: testPlantName })
+      .first();
+    const menuButton = plantCard
+      .locator('[data-testid^="e2e-plants-card-menu-"]')
+      .first();
     if (await menuButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await menuButton.click();
-      const deleteItem = page.getByRole('menuitem', { name: /delete/i });
+      await menuButton.click({ force: true });
+      const deleteItem = page
+        .locator('[data-testid^="e2e-plants-card-delete-"]')
+        .first();
       if (await deleteItem.isVisible({ timeout: 2000 }).catch(() => false)) {
         await deleteItem.click();
-        const confirmBtn = page.getByRole('button', { name: /confirm|delete|yes/i });
+        const confirmBtn = page
+          .locator('[data-testid^="e2e-plants-card-delete-confirm-"]')
+          .first();
         if (await confirmBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await confirmBtn.click();
         }

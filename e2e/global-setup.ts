@@ -55,6 +55,12 @@ const buildAuthStorageState = async (baseUrl: string) => {
   await page.goto(`${baseUrl}/login`);
   await page.getByPlaceholder('Enter your email').fill(email);
   await page.getByPlaceholder('Enter your password').fill(password);
+  const rememberMeCheckbox = page.getByRole('checkbox', {
+    name: 'Remember me',
+  });
+  if (!(await rememberMeCheckbox.isChecked())) {
+    await rememberMeCheckbox.check();
+  }
   await page.getByRole('button', { name: 'Sign In' }).click();
   await page.waitForURL('**/dashboard', { timeout: 20000 });
 
@@ -66,7 +72,10 @@ const buildAuthStorageState = async (baseUrl: string) => {
     await onboardingContinue.waitFor({ state: 'hidden', timeout: 10000 });
   }
 
-  await page.context().storageState({ path: STORAGE_STATE_PATH });
+  await page.context().storageState({
+    path: STORAGE_STATE_PATH,
+    indexedDB: true,
+  });
   await browser.close();
 };
 

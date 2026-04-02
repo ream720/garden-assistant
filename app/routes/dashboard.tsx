@@ -567,11 +567,15 @@ function DashboardContent() {
 
   return (
     <DashboardLayout title="Dashboard">
-      <div className="flex-1 space-y-8">
+      <div className="flex-1 space-y-8" data-testid="e2e-dashboard-root">
         {/* Stats Grid */}
         <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {/* Active Plants */}
-          <Link to="/plants?status=active" className={statTileClassName}>
+          <Link
+            to="/plants?status=active"
+            className={statTileClassName}
+            data-testid="e2e-dashboard-stat-active-plants"
+          >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Plants</p>
@@ -591,6 +595,7 @@ function DashboardContent() {
           <Link
             to="/events?type=tasks&taskStatus=issues"
             className={statTileClassName}
+            data-testid="e2e-dashboard-stat-open-issues"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -608,6 +613,7 @@ function DashboardContent() {
           <Link
             to="/events?type=tasks&taskStatus=dueSoon"
             className={statTileClassName}
+            data-testid="e2e-dashboard-stat-tasks-due"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -622,7 +628,11 @@ function DashboardContent() {
           </Link>
 
           {/* Total Harvests */}
-          <Link to="/plants?status=harvested" className={statTileClassName}>
+          <Link
+            to="/plants?status=harvested"
+            className={statTileClassName}
+            data-testid="e2e-dashboard-stat-total-harvests"
+          >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Harvests</p>
@@ -689,7 +699,10 @@ function DashboardContent() {
           {/* Left Column (8 cols) */}
           <div className="flex flex-col gap-8 lg:col-span-8">
             {/* Priority/Upcoming Tasks */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800">
+            <div
+              className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800"
+              data-testid="e2e-dashboard-upcoming-tasks"
+            >
               <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-slate-900/50">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Upcoming Tasks</h3>
                 <Link to="/events?type=tasks" className="text-sm font-medium text-primary hover:text-primary/80">
@@ -709,6 +722,7 @@ function DashboardContent() {
                     return (
                       <div
                         key={task.id}
+                        data-testid={`e2e-dashboard-task-row-${task.id}`}
                         className="group flex items-center justify-between p-4 transition-colors hover:bg-gray-50 dark:hover:bg-slate-800/50"
                       >
                         <div className="flex items-start gap-3">
@@ -753,6 +767,7 @@ function DashboardContent() {
                           size="sm"
                           className="text-xs text-primary"
                           onClick={() => handleMarkComplete(task.id)}
+                          data-testid={`e2e-dashboard-task-complete-${task.id}`}
                         >
                           Mark Complete
                         </Button>
@@ -765,14 +780,21 @@ function DashboardContent() {
                       <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-300">
                         <Calendar className="h-5 w-5" />
                       </div>
-                      <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                      <h4
+                        className="text-base font-semibold text-slate-900 dark:text-white"
+                        data-testid="e2e-dashboard-empty-upcoming"
+                      >
                         No upcoming tasks yet
                       </h4>
                       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                         Add your first scheduled care task so this section can keep your next steps visible.
                       </p>
                       <div className="mt-4 flex flex-wrap justify-center gap-2">
-                        <Button size="sm" onClick={() => setShowAddTask(true)}>
+                        <Button
+                          size="sm"
+                          onClick={() => setShowAddTask(true)}
+                          data-testid="e2e-dashboard-empty-create-task"
+                        >
                           Create First Task
                         </Button>
                         <Button size="sm" variant="outline" asChild>
@@ -786,7 +808,10 @@ function DashboardContent() {
             </div>
 
             {/* Recent Activity */}
-            <div className="flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800">
+            <div
+              className="flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-slate-800"
+              data-testid="e2e-dashboard-recent-activity"
+            >
               <div className="border-b border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-slate-900/50">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Recent Activity</h3>
               </div>
@@ -796,7 +821,10 @@ function DashboardContent() {
                     <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-300">
                       <CheckCircle2 className="h-5 w-5" />
                     </div>
-                    <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+                    <h4
+                      className="text-base font-semibold text-slate-900 dark:text-white"
+                      data-testid="e2e-dashboard-empty-activity"
+                    >
                       Activity timeline is empty
                     </h4>
                     <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
@@ -849,7 +877,10 @@ function DashboardContent() {
           {/* Right Column (4 cols) */}
           <div className="flex flex-col gap-8 lg:col-span-4">
                         {/* Quick Actions */}
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+            <div
+              className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-slate-800"
+              data-testid="e2e-dashboard-quick-actions"
+            >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Quick Actions</h3>
                 <FeatureHelpPopover
@@ -869,6 +900,7 @@ function DashboardContent() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setShowAddPlant(true)}
+                  data-testid="e2e-dashboard-qa-add-plant"
                   className="group flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-slate-900/50 dark:hover:bg-slate-800"
                 >
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110 dark:bg-slate-700">
@@ -881,6 +913,7 @@ function DashboardContent() {
                 </button>
                 <button
                   onClick={() => setShowAddSpace(true)}
+                  data-testid="e2e-dashboard-qa-add-space"
                   className="group flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-slate-900/50 dark:hover:bg-slate-800"
                 >
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110 dark:bg-slate-700">
@@ -893,6 +926,7 @@ function DashboardContent() {
                 </button>
                 <button
                   onClick={() => setShowAddNote(true)}
+                  data-testid="e2e-dashboard-qa-add-note"
                   className="group flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-slate-900/50 dark:hover:bg-slate-800"
                 >
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110 dark:bg-slate-700">
@@ -905,6 +939,7 @@ function DashboardContent() {
                 </button>
                 <button
                   onClick={() => setShowAddTask(true)}
+                  data-testid="e2e-dashboard-qa-add-task"
                   className="group flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50 p-4 transition-all hover:bg-gray-100 dark:border-gray-700 dark:bg-slate-900/50 dark:hover:bg-slate-800"
                 >
                   <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110 dark:bg-slate-700">
@@ -919,7 +954,9 @@ function DashboardContent() {
             </div>
 
             {/* Plant Stage Distribution */}
-            <PlantStageDistribution plants={scopedPlants} isLoading={plantsLoading} />
+            <div data-testid="e2e-dashboard-plant-stages">
+              <PlantStageDistribution plants={scopedPlants} isLoading={plantsLoading} />
+            </div>
           </div>
         </div>
       </div>
@@ -933,7 +970,7 @@ function DashboardContent() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[560px]">
+        <DialogContent className="sm:max-w-[560px]" data-testid="e2e-dashboard-onboarding-dialog">
           <DialogHeader>
             <DialogTitle>Welcome to Grospace</DialogTitle>
             <DialogDescription>
@@ -1011,10 +1048,16 @@ function DashboardContent() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={dismissOnboarding}>
+            <Button
+              variant="outline"
+              onClick={dismissOnboarding}
+              data-testid="e2e-dashboard-onboarding-close"
+            >
               Close For Now
             </Button>
-            <Button onClick={completeOnboarding}>Complete setup</Button>
+            <Button onClick={completeOnboarding} data-testid="e2e-dashboard-onboarding-complete">
+              Complete setup
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

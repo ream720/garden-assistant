@@ -102,10 +102,14 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
 
   return (
     <>
-      <Card className="hover:shadow-md transition-shadow">
+      <Card className="hover:shadow-md transition-shadow" data-testid={`e2e-plants-card-${plant.id}`}>
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
           <div className="space-y-1">
-            <Link to={`/plants/${plant.id}`} className="hover:underline">
+            <Link
+              to={`/plants/${plant.id}`}
+              className="hover:underline"
+              data-testid={`e2e-plants-card-link-${plant.id}`}
+            >
                 <CardTitle className="text-lg">{plant.name}</CardTitle>
             </Link>
             <p className="text-sm text-muted-foreground">{formatPlantVariety(plant.variety)}</p>
@@ -122,7 +126,11 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  data-testid={`e2e-plants-card-menu-${plant.id}`}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -153,6 +161,7 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
                 <DropdownMenuItem
                   onClick={() => setShowDeleteDialog(true)}
                   className="text-destructive"
+                  data-testid={`e2e-plants-card-delete-${plant.id}`}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
@@ -214,7 +223,11 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid={`e2e-plants-card-delete-confirm-${plant.id}`}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
