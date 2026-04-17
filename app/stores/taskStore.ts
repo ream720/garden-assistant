@@ -205,6 +205,31 @@ export const useTaskStore = create<TaskState>()(
           throw new Error(result.error.message);
         } else {
           const completedTask = result.data!;
+
+          const refreshedResult = await taskService.getUserTasks(user.uid);
+          if (refreshedResult.data) {
+            set(state => {
+              const selectedTaskId = state.selectedTask?.id;
+              const refreshedSelectedTask = selectedTaskId
+                ? refreshedResult.data!.find(task => task.id === selectedTaskId) ?? null
+                : null;
+
+              return {
+                tasks: refreshedResult.data!,
+                selectedTask: refreshedSelectedTask,
+                loading: false,
+              };
+            });
+            return;
+          }
+
+          if (refreshedResult.error) {
+            console.warn(
+              'Task completion refresh failed; using local fallback state:',
+              refreshedResult.error.message
+            );
+          }
+
           set(state => ({
             tasks: state.tasks.map(task => 
               task.id === id ? completedTask : task

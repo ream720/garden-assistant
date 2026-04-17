@@ -46,15 +46,18 @@ export function NoteList({
   const [selectedPlant, setSelectedPlant] = useState<string>('all');
   const [formLoading, setFormLoading] = useState(false);
 
-  const effectiveSpaceId = spaceId || searchParams.get('spaceId') || undefined;
-  const effectivePlantId = plantId || searchParams.get('plantId') || undefined;
+  const effectiveSpaceId = spaceId || searchParams.get('noteSpaceId') || undefined;
+  const effectivePlantId = plantId || searchParams.get('notePlantId') || undefined;
 
   useEffect(() => {
-    if (searchParams.get('spaceId') && !spaceId) {
-      setSelectedSpace(searchParams.get('spaceId') || 'all');
+    if (searchParams.get('noteSpaceId') && !spaceId) {
+      setSelectedSpace(searchParams.get('noteSpaceId') || 'all');
     }
-    if (searchParams.get('plantId') && !plantId) {
-      setSelectedPlant(searchParams.get('plantId') || 'all');
+    if (searchParams.get('notePlantId') && !plantId) {
+      setSelectedPlant(searchParams.get('notePlantId') || 'all');
+    }
+    if (searchParams.get('noteCategory')) {
+      setSelectedCategory(searchParams.get('noteCategory') || 'all');
     }
   }, [searchParams, spaceId, plantId]);
 
@@ -294,12 +297,12 @@ export function NoteList({
                   <button
                     onClick={() => {
                       setSelectedSpace('all');
-                      updateUrlParams({ spaceId: null });
+                      updateUrlParams({ noteSpaceId: null });
                     }}
                     className="ml-1 hover:bg-muted rounded-full p-0.5 text-xs"
                     title="Remove space filter"
                   >
-                    ×
+                    x
                   </button>
                 </Badge>
               )}
@@ -310,12 +313,12 @@ export function NoteList({
                   <button
                     onClick={() => {
                       setSelectedPlant('all');
-                      updateUrlParams({ plantId: null });
+                      updateUrlParams({ notePlantId: null });
                     }}
                     className="ml-1 hover:bg-muted rounded-full p-0.5 text-xs"
                     title="Remove plant filter"
                   >
-                    ×
+                    x
                   </button>
                 </Badge>
               )}
@@ -325,7 +328,7 @@ export function NoteList({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select value={selectedCategory} onValueChange={(value) => {
               setSelectedCategory(value);
-              updateUrlParams({ category: value });
+              updateUrlParams({ noteCategory: value });
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="All categories" />
@@ -345,7 +348,7 @@ export function NoteList({
               onValueChange={(value) => {
                 setSelectedSpace(value);
                 setSelectedPlant('all');
-                updateUrlParams({ spaceId: value, plantId: null });
+                updateUrlParams({ noteSpaceId: value, notePlantId: null });
               }}
             >
               <SelectTrigger>
@@ -365,7 +368,7 @@ export function NoteList({
               value={effectivePlantId || selectedPlant}
               onValueChange={(value) => {
                 setSelectedPlant(value);
-                updateUrlParams({ plantId: value });
+                updateUrlParams({ notePlantId: value });
               }}
             >
               <SelectTrigger>
@@ -473,6 +476,4 @@ export function NoteList({
     </div>
   );
 }
-
-
 

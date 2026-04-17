@@ -215,149 +215,167 @@ export function NoteForm({
           </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="content"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Note Content</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Example: Noticed lower leaves yellowing after feeding. Added photos for comparison."
-                  className="min-h-[120px] resize-none"
-                  {...field}
-                  data-testid="e2e-note-form-content"
-                />
-              </FormControl>
-              <p className="text-sm text-muted-foreground">
-                Keep it concise but useful. Good notes make future searching and troubleshooting easier.
-              </p>
-              <div className="text-right text-sm text-muted-foreground">
-                {field.value.length}/2000
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="e2e-note-form-category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {NOTE_CATEGORIES.map((category) => (
-                    <SelectItem key={category.value} value={category.value}>
-                      {category.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                {noteCategoryDescriptions[selectedCategory]}
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="spaceId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Grow Space</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="e2e-note-form-space">
-                    <SelectValue placeholder="Select a grow space" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">No specific space</SelectItem>
-                  {spaces.map((space) => (
-                    <SelectItem key={space.id} value={space.id}>
-                      {space.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Choose a space when the note applies to the environment as a whole or multiple plants in the same area.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="plantId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Plant (Optional)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger data-testid="e2e-note-form-plant">
-                    <SelectValue placeholder="Select a plant" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">No specific plant</SelectItem>
-                  {availablePlants.map((plant) => (
-                    <SelectItem key={plant.id} value={plant.id}>
-                      {formatPlantDisplayName(plant)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Choose a plant when the note is specific to that plant. Selecting a plant also keeps the space association aligned.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="timestamp"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Date & Time</FormLabel>
-              <FormControl>
-                <Input type="datetime-local" {...field} />
-              </FormControl>
-              <p className="text-sm text-muted-foreground">
-                Adjust this if you are logging something after the fact and want the timeline to reflect when it actually happened.
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {showPhotoUpload && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Photos</label>
-            <p className="text-sm text-muted-foreground">
-              Notes can include photos for progress tracking, issue diagnosis, and visual history. Tasks do not support photos.
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Note details</h3>
+            <p className="text-xs text-muted-foreground">
+              Capture what happened in clear language so it stays useful later.
             </p>
-            <PhotoUpload
-              photos={photos}
-              onPhotosChange={setPhotos}
-              disabled={loading}
-            />
           </div>
-        )}
 
-        <div className="flex justify-end space-x-2">
+          <FormField
+            control={form.control}
+            name="content"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Note Content</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Example: Noticed lower leaves yellowing after feeding. Added photos for comparison."
+                    className="min-h-[120px] resize-none"
+                    {...field}
+                    data-testid="e2e-note-form-content"
+                  />
+                </FormControl>
+                <p className="text-sm text-muted-foreground">
+                  Keep it concise but useful. Good notes make future searching and troubleshooting easier.
+                </p>
+                <div className="text-right text-sm text-muted-foreground">
+                  {field.value.length}/2000
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Category</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="e2e-note-form-category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {NOTE_CATEGORIES.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  {noteCategoryDescriptions[selectedCategory]}
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Context and timing</h3>
+            <p className="text-xs text-muted-foreground">
+              Link this note to the right space, plant, and date for better history.
+            </p>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="spaceId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Grow Space</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="e2e-note-form-space">
+                      <SelectValue placeholder="Select a grow space" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">No specific space</SelectItem>
+                    {spaces.map((space) => (
+                      <SelectItem key={space.id} value={space.id}>
+                        {space.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Choose a space when the note applies to the environment as a whole or multiple plants in the same area.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="plantId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Plant (Optional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger data-testid="e2e-note-form-plant">
+                      <SelectValue placeholder="Select a plant" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">No specific plant</SelectItem>
+                    {availablePlants.map((plant) => (
+                      <SelectItem key={plant.id} value={plant.id}>
+                        {formatPlantDisplayName(plant)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Choose a plant when the note is specific to that plant. Selecting a plant also keeps the space association aligned.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="timestamp"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date & Time</FormLabel>
+                <FormControl>
+                  <Input type="datetime-local" {...field} />
+                </FormControl>
+                <p className="text-sm text-muted-foreground">
+                  Adjust this if you are logging something after the fact and want the timeline to reflect when it actually happened.
+                </p>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {showPhotoUpload && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Photos</label>
+              <p className="text-sm text-muted-foreground">
+                Notes can include photos for progress tracking, issue diagnosis, and visual history. Tasks do not support photos.
+              </p>
+              <PhotoUpload
+                photos={photos}
+                onPhotosChange={setPhotos}
+                disabled={loading}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
           <Button
             type="button"
             variant="outline"

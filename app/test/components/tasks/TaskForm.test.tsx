@@ -115,6 +115,7 @@ describe('TaskForm', () => {
         interval: 1,
       })
     );
+    expect(submittedTask.recurrence).not.toHaveProperty('endDate');
   });
 
   it('requires start date when editing recurring tasks without recurrenceStartDate', async () => {

@@ -88,7 +88,7 @@ describe('NoteList URL Parameter Handling', () => {
 
     it('should show clear filters button when filters are active', async () => {
       // Mock URL params with filters
-      const mockSearchParams = new URLSearchParams('?spaceId=space-1&category=observation');
+      const mockSearchParams = new URLSearchParams('?noteSpaceId=space-1&noteCategory=observation');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 
@@ -106,7 +106,7 @@ describe('NoteList URL Parameter Handling', () => {
 
   describe('Active Filter Badges', () => {
     it('should show active space filter badge', async () => {
-      const mockSearchParams = new URLSearchParams('?spaceId=space-1');
+      const mockSearchParams = new URLSearchParams('?noteSpaceId=space-1');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 
@@ -123,7 +123,7 @@ describe('NoteList URL Parameter Handling', () => {
     });
 
     it('should show active plant filter badge', async () => {
-      const mockSearchParams = new URLSearchParams('?plantId=plant-1');
+      const mockSearchParams = new URLSearchParams('?notePlantId=plant-1');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 
@@ -140,7 +140,7 @@ describe('NoteList URL Parameter Handling', () => {
     });
 
     it('should allow removing active filters', async () => {
-      const mockSearchParams = new URLSearchParams('?spaceId=space-1');
+      const mockSearchParams = new URLSearchParams('?noteSpaceId=space-1');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 
@@ -194,7 +194,7 @@ describe('NoteList URL Parameter Handling', () => {
     });
 
     it('should clear URL params when clear filters is clicked', async () => {
-      const mockSearchParams = new URLSearchParams('?spaceId=space-1&category=observation');
+      const mockSearchParams = new URLSearchParams('?noteSpaceId=space-1&noteCategory=observation');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 
@@ -215,7 +215,7 @@ describe('NoteList URL Parameter Handling', () => {
 
   describe('Props vs URL Parameters', () => {
     it('should prioritize props over URL parameters', async () => {
-      const mockSearchParams = new URLSearchParams('?spaceId=space-2');
+      const mockSearchParams = new URLSearchParams('?noteSpaceId=space-2');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 
@@ -231,7 +231,7 @@ describe('NoteList URL Parameter Handling', () => {
     });
 
     it('should use URL parameters when props are not provided', async () => {
-      const mockSearchParams = new URLSearchParams('?plantId=plant-1');
+      const mockSearchParams = new URLSearchParams('?notePlantId=plant-1');
       const { useSearchParams } = await import('react-router');
       vi.mocked(useSearchParams).mockReturnValue([mockSearchParams, mockSetSearchParams]);
 

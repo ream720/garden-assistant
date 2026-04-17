@@ -201,7 +201,7 @@ export function TaskForm({
         recurrence = {
           type: data.recurrenceType,
           interval: data.recurrenceInterval,
-          endDate: data.recurrenceEndDate,
+          ...(data.recurrenceEndDate ? { endDate: data.recurrenceEndDate } : {}),
         };
         recurrenceStartDate = data.recurrenceStartDate;
         dueDate = data.recurrenceStartDate;
@@ -270,36 +270,52 @@ export function TaskForm({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="title">Title *</Label>
-          <Input
-            id="title"
-            {...register('title')}
-            placeholder="Example: Transplant tomato into 5 gallon pot"
-            className={errors.title ? 'border-red-500' : ''}
-            data-testid="e2e-task-form-title"
-          />
-          <p className="text-sm text-muted-foreground">
-            Keep the title action-oriented so it is obvious what needs to happen when the task comes due.
-          </p>
-          {errors.title && <p className="text-sm text-red-500">{errors.title.message}</p>}
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Task details</h3>
+            <p className="text-xs text-muted-foreground">
+              Define the action clearly so completion is straightforward.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="title">Title *</Label>
+            <Input
+              id="title"
+              {...register('title')}
+              placeholder="Example: Transplant tomato into 5 gallon pot"
+              className={errors.title ? 'border-red-500' : ''}
+              data-testid="e2e-task-form-title"
+            />
+            <p className="text-sm text-muted-foreground">
+              Keep the title action-oriented so it is obvious what needs to happen when the task comes due.
+            </p>
+            {errors.title && <p className="text-sm text-red-500">{errors.title.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              {...register('description')}
+              placeholder="Optional details such as nutrient amount, tools needed, or what to check when you complete the task."
+              rows={3}
+              data-testid="e2e-task-form-description"
+            />
+            <p className="text-sm text-muted-foreground">
+              Add extra detail only if it will help you or someone else complete the task correctly later.
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            {...register('description')}
-            placeholder="Optional details such as nutrient amount, tools needed, or what to check when you complete the task."
-            rows={3}
-            data-testid="e2e-task-form-description"
-          />
-          <p className="text-sm text-muted-foreground">
-            Add extra detail only if it will help you or someone else complete the task correctly later.
-          </p>
-        </div>
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Schedule and priority</h3>
+            <p className="text-xs text-muted-foreground">
+              Set timing first, then tune urgency with priority.
+            </p>
+          </div>
 
-        <div className="space-y-4">
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -429,9 +445,8 @@ export function TaskForm({
               </div>
             </div>
           )}
-        </div>
 
-        {!watchedHasRecurrence && (
+          {!watchedHasRecurrence && (
           <div className="space-y-2">
             <Label>Due Date *</Label>
             <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
@@ -468,85 +483,95 @@ export function TaskForm({
             </p>
             {errors.dueDate && <p className="text-sm text-red-500">{errors.dueDate.message}</p>}
           </div>
-        )}
-
-        <div className="space-y-2">
-          <Label>Priority</Label>
-          <Select value={watchedPriority} onValueChange={(value: TaskPriority) => setValue('priority', value)}>
-            <SelectTrigger data-testid="e2e-task-form-priority">
-              <SelectValue placeholder="Select priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-sm text-muted-foreground">{priorityDescriptions[watchedPriority]}</p>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Grow Space (Optional)</Label>
-          <Select
-            value={watchedSpaceId || 'none'}
-            onValueChange={(value) => {
-              setValue('spaceId', value === 'none' ? undefined : value);
-              setValue('plantId', undefined);
-            }}
-            disabled={disableSpaceSelection}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a grow space" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No specific space</SelectItem>
-              {spaces.map((space) => (
-                <SelectItem key={space.id} value={space.id}>
-                  {space.name} ({space.type})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {disableSpaceSelection ? (
-            <p className="text-sm text-muted-foreground">This task is locked to the current space context.</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Attach the task to a space when the work applies to the environment as a whole or to multiple plants in that area.
-            </p>
           )}
+
+          <div className="space-y-2">
+            <Label>Priority</Label>
+            <Select value={watchedPriority} onValueChange={(value: TaskPriority) => setValue('priority', value)}>
+              <SelectTrigger data-testid="e2e-task-form-priority">
+                <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">{priorityDescriptions[watchedPriority]}</p>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Plant (Optional)</Label>
-          <Select
-            value={watch('plantId') || 'none'}
-            onValueChange={(value) => setValue('plantId', value === 'none' ? undefined : value)}
-            disabled={shouldDisablePlantSelect}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a plant" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No specific plant</SelectItem>
-              {filteredPlants.map((plant) => (
-                <SelectItem key={plant.id} value={plant.id}>
-                  {formatPlantDisplayName(plant)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {disablePlantSelection ? (
-            <p className="text-sm text-muted-foreground">This task is locked to the current plant context.</p>
-          ) : !watchedSpaceId && plants.length > 10 ? (
-            <p className="text-sm text-muted-foreground">Select a grow space first to narrow the plant list.</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Attach to a plant when the task is specific to one plant rather than the whole space.
+        <div className="space-y-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Context</h3>
+            <p className="text-xs text-muted-foreground">
+              Link this task to where the work belongs.
             </p>
-          )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Grow Space (Optional)</Label>
+            <Select
+              value={watchedSpaceId || 'none'}
+              onValueChange={(value) => {
+                setValue('spaceId', value === 'none' ? undefined : value);
+                setValue('plantId', undefined);
+              }}
+              disabled={disableSpaceSelection}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a grow space" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No specific space</SelectItem>
+                {spaces.map((space) => (
+                  <SelectItem key={space.id} value={space.id}>
+                    {space.name} ({space.type})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {disableSpaceSelection ? (
+              <p className="text-sm text-muted-foreground">This task is locked to the current space context.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Attach the task to a space when the work applies to the environment as a whole or to multiple plants in that area.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Plant (Optional)</Label>
+            <Select
+              value={watch('plantId') || 'none'}
+              onValueChange={(value) => setValue('plantId', value === 'none' ? undefined : value)}
+              disabled={shouldDisablePlantSelect}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a plant" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No specific plant</SelectItem>
+                {filteredPlants.map((plant) => (
+                  <SelectItem key={plant.id} value={plant.id}>
+                    {formatPlantDisplayName(plant)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {disablePlantSelection ? (
+              <p className="text-sm text-muted-foreground">This task is locked to the current plant context.</p>
+            ) : !watchedSpaceId && plants.length > 10 ? (
+              <p className="text-sm text-muted-foreground">Select a grow space first to narrow the plant list.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Attach to a plant when the task is specific to one plant rather than the whole space.
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex justify-end space-x-2 pt-4">
+        <div className="flex justify-end gap-2 pt-2">
           <Button
             type="button"
             variant="outline"

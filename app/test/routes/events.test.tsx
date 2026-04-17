@@ -359,6 +359,92 @@ describe('Events route', () => {
     expect(screen.getByText('Due Mar 20, 2026')).toBeInTheDocument();
   });
 
+  it('shows a projected checklist window for recurring tasks without an end date', async () => {
+    mockTasks = [
+      {
+        id: 'task-recur-open-ended',
+        userId: 'user-1',
+        title: 'Open-ended recurring',
+        dueDate: new Date('2026-03-16T10:00:00'),
+        priority: 'medium',
+        status: 'pending',
+        recurrence: {
+          type: 'weekly',
+          interval: 1,
+        },
+        recurrenceStartDate: new Date('2026-03-16T10:00:00'),
+        createdAt: new Date('2026-03-16T10:00:00'),
+        updatedAt: new Date('2026-03-16T10:00:00'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText('Open-ended recurring').length).toBeGreaterThan(0)
+    );
+
+    expect(screen.getByText('Recurring completion log')).toBeInTheDocument();
+    expect(
+      screen.getByText('0 of 12 scheduled completions logged')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Occurrence 1')).toBeInTheDocument();
+    expect(screen.getByText('Occurrence 12')).toBeInTheDocument();
+    expect(screen.queryByText('Occurrence 13')).not.toBeInTheDocument();
+  });
+
+  it('renders a single task card for recurring series even when completed occurrences exist', async () => {
+    mockTasks = [
+      {
+        id: 'task-recur-open-ended-completed',
+        userId: 'user-1',
+        title: 'Series task',
+        dueDate: new Date('2026-03-16T10:00:00'),
+        priority: 'medium',
+        status: 'completed',
+        completedAt: new Date('2026-03-16T11:00:00'),
+        recurrence: {
+          type: 'weekly',
+          interval: 1,
+        },
+        recurrenceSeriesId: 'series-weekly-1',
+        recurrenceOccurrence: 1,
+        recurrenceStartDate: new Date('2026-03-16T10:00:00'),
+        createdAt: new Date('2026-03-16T10:00:00'),
+        updatedAt: new Date('2026-03-16T11:00:00'),
+      },
+      {
+        id: 'task-recur-open-ended-pending',
+        userId: 'user-1',
+        title: 'Series task',
+        dueDate: new Date('2026-03-23T10:00:00'),
+        priority: 'medium',
+        status: 'pending',
+        recurrence: {
+          type: 'weekly',
+          interval: 1,
+        },
+        recurrenceSeriesId: 'series-weekly-1',
+        recurrenceOccurrence: 2,
+        recurrenceStartDate: new Date('2026-03-16T10:00:00'),
+        createdAt: new Date('2026-03-16T11:00:01'),
+        updatedAt: new Date('2026-03-16T11:00:01'),
+      },
+    ];
+
+    render(<EventsPage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('e2e-events-task-card-task-recur-open-ended-pending')
+      ).toBeInTheDocument()
+    );
+
+    expect(
+      screen.queryByTestId('e2e-events-task-card-task-recur-open-ended-completed')
+    ).not.toBeInTheDocument();
+  });
+
   it('opens completion flow when clicking an actionable recurring occurrence card', async () => {
     mockTasks = [
       {
@@ -922,7 +1008,7 @@ describe('Events route', () => {
   });
 
   it('shows notes filter empty-state guidance and clears note params', async () => {
-    mockSearchParams = new URLSearchParams('type=notes&category=issue');
+    mockSearchParams = new URLSearchParams('type=notes&noteCategory=issue');
     mockNotes = [
       {
         id: 'note-filter-1',
@@ -958,14 +1044,14 @@ describe('Events route', () => {
 
     const params = mockSetSearchParams.mock.calls.at(-1)?.[0] as URLSearchParams;
     expect(params.get('type')).toBe('notes');
-    expect(params.get('category')).toBeNull();
-    expect(params.get('spaceId')).toBeNull();
-    expect(params.get('plantId')).toBeNull();
+    expect(params.get('noteCategory')).toBeNull();
+    expect(params.get('noteSpaceId')).toBeNull();
+    expect(params.get('notePlantId')).toBeNull();
   });
 
   it('applies notes deep-link filters and renders note details', async () => {
     mockSearchParams = new URLSearchParams(
-      'type=notes&category=issue&spaceId=space-1'
+      'type=notes&noteCategory=issue&noteSpaceId=space-1'
     );
     mockNotes = [
       {
