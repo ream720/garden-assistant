@@ -143,7 +143,7 @@ export function PlantCard({ plant, noteCount, onEdit, onMove, onHarvest }: Plant
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate(`/events?type=notes&plantId=${plant.id}`)}>
+                <DropdownMenuItem onClick={() => navigate(`/events?type=notes&noteContext=plants&notePlantId=${plant.id}`)}>
                   <StickyNote className="mr-2 h-4 w-4" />
                   View Events ({resolvedNoteCount})
                 </DropdownMenuItem>

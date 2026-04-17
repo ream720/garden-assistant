@@ -3,6 +3,7 @@ import { addDays, addMonths, addWeeks, isBefore, isSameDay, startOfDay } from 'd
 import type { RecurrenceSettings, Task } from '../types';
 
 const MAX_RECURRING_CHECKLIST_ITEMS = 180;
+const OPEN_ENDED_RECURRING_CHECKLIST_PREVIEW_ITEMS = 12;
 
 const toDayKey = (date: Date) => startOfDay(date).getTime();
 
@@ -209,18 +210,46 @@ export const buildRecurringTaskChecklist = (
       occurrenceNumber += 1;
     }
   } else {
-    items = seriesTasks.map((seriesTask, index) => ({
-      dueDate: seriesTask.dueDate,
-      occurrenceNumber: seriesTask.recurrenceOccurrence ?? index + 1,
-      taskId: seriesTask.id,
-      completedAt: seriesTask.completedAt,
-      status: classifyOccurrenceStatus(
-        seriesTask.dueDate,
-        seriesTask,
-        referenceDate
-      ),
-      isCurrent: seriesTask.id === task.id,
-    }));
+    const seriesStartDate =
+      task.recurrenceStartDate ??
+      seriesTasks[0]?.recurrenceStartDate ??
+      seriesTasks[0]?.dueDate;
+
+    if (!seriesStartDate) {
+      return null;
+    }
+
+    const selectedOccurrenceNumber = task.recurrenceOccurrence ?? 1;
+    const projectedOccurrenceCount = Math.min(
+      MAX_RECURRING_CHECKLIST_ITEMS,
+      Math.max(
+        OPEN_ENDED_RECURRING_CHECKLIST_PREVIEW_ITEMS,
+        selectedOccurrenceNumber + 3
+      )
+    );
+
+    let occurrenceDate = seriesStartDate;
+    let occurrenceNumber = 1;
+
+    while (occurrenceNumber <= projectedOccurrenceCount) {
+      const dayKey = toDayKey(occurrenceDate);
+      const matchingTask = tasksByDay.get(dayKey)?.[0];
+      const itemDueDate = new Date(occurrenceDate);
+
+      items.push({
+        dueDate: itemDueDate,
+        occurrenceNumber,
+        taskId: matchingTask?.id,
+        completedAt: matchingTask?.completedAt,
+        status: classifyOccurrenceStatus(itemDueDate, matchingTask, referenceDate),
+        isCurrent:
+          matchingTask?.id === task.id ||
+          (!matchingTask && isSameDay(itemDueDate, task.dueDate)),
+      });
+
+      occurrenceDate = incrementRecurrenceDate(occurrenceDate, task.recurrence);
+      occurrenceNumber += 1;
+    }
   }
 
   if (items.length === 0) {

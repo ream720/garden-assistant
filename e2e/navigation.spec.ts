@@ -58,14 +58,16 @@ test.describe('Navigation & Routing', () => {
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test('legacy notes route redirects to login', async ({ page }) => {
+    test('legacy notes route returns 404', async ({ page }) => {
       await page.goto('/notes');
-      await expect(page).toHaveURL(/\/login/);
+      await expect(page).toHaveURL(/\/notes/);
+      await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
     });
 
-    test('legacy tasks route redirects to login', async ({ page }) => {
+    test('legacy tasks route returns 404', async ({ page }) => {
       await page.goto('/tasks');
-      await expect(page).toHaveURL(/\/login/);
+      await expect(page).toHaveURL(/\/tasks/);
+      await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
     });
 
     test('profile redirects to login', async ({ page }) => {
@@ -130,20 +132,16 @@ test.describe('Navigation & Routing', () => {
       await expect(page).toHaveTitle(/Settings/);
     });
 
-    test('legacy /notes route redirects to Events notes view', async ({ page }) => {
+    test('legacy /notes route returns 404 when authenticated', async ({ page }) => {
       await page.goto('/notes');
-      await expect(page).toHaveURL(/\/events\?.*type=notes/);
-      await expect(page.getByTestId('e2e-events-add-note')).toBeVisible({
-        timeout: 10000,
-      });
+      await expect(page).toHaveURL(/\/notes/);
+      await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
     });
 
-    test('legacy /tasks route redirects to Events tasks view', async ({ page }) => {
+    test('legacy /tasks route returns 404 when authenticated', async ({ page }) => {
       await page.goto('/tasks');
-      await expect(page).toHaveURL(/\/events\?.*type=tasks/);
-      await expect(page.getByTestId('e2e-events-add-task')).toBeVisible({
-        timeout: 10000,
-      });
+      await expect(page).toHaveURL(/\/tasks/);
+      await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
     });
 
     test('Log Out button is visible when authenticated', async ({ page }) => {

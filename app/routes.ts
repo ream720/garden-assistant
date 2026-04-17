@@ -23,10 +23,6 @@ export default [
   // Events
   route("/events", "routes/events.tsx"),
 
-  // Legacy route redirects
-  route("/notes", "routes/notes.tsx"),
-  route("/tasks", "routes/tasks.tsx"),
-
   // Profile
   route("/profile", "routes/profile.tsx"),
 

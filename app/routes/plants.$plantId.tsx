@@ -1,34 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, CheckSquare } from 'lucide-react';
+
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+
+import { ProtectedRoute } from '../components/routing/ProtectedRoute';
 import { PlantDetails } from '../components/plants/PlantDetails';
+import { NoteList } from '../components/notes/NoteList';
 import { ActivityFeed } from '../components/activity/ActivityFeed';
 import { TaskForm } from '../components/tasks/TaskForm';
 import { TaskCard } from '../components/tasks/TaskCard';
 import { TaskCompletionDialog } from '../components/tasks/TaskCompletionDialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '../components/ui/dialog';
-import { ProtectedRoute } from '../components/routing/ProtectedRoute';
+
 import { useAuthStore } from '../stores/authStore';
 import { useSpaceStore } from '../stores/spaceStore';
 import { usePlantStore } from '../stores/plantStore';
 import { useNoteStore } from '../stores/noteStore';
 import { useTaskStore } from '../stores/taskStore';
 import { useToast } from '../components/ui/use-toast';
+
 import { activityService } from '../lib/services/activityService';
 import type { Task } from '../lib/types';
 import type { NoteCategory } from '../lib/types/note';
 
 export function meta({ params }: { params: { plantId: string } }) {
   return [
-    { title: `Plant Details - Grospace` },
+    { title: 'Plant Details - Grospace' },
     { name: 'description', content: 'View plant details and history' },
   ];
 }
@@ -53,36 +53,46 @@ function PlantDetailPageContent() {
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
+  const [mobileSection, setMobileSection] = useState<'tasks' | 'notes'>('tasks');
 
   useEffect(() => {
-    if (user) {
-      loadSpaces();
-      loadPlants();
-      loadNotes(user.uid);
-      loadTasks();
+    if (!user) {
+      return;
     }
+
+    loadSpaces();
+    loadPlants();
+    loadNotes(user.uid);
+    loadTasks();
   }, [user, loadSpaces, loadPlants, loadNotes, loadTasks]);
 
-  const plant = plants.find((p) => p.id === plantId);
+  const plant = plants.find((item) => item.id === plantId);
 
   const plantTasks = useMemo(() => {
-    if (!plant) return [];
+    if (!plant) {
+      return [];
+    }
 
     return tasks
       .filter((task) => task.plantId === plant.id)
-      .sort((a, b) => {
-        if (a.status !== b.status) {
-          return a.status === 'pending' ? -1 : 1;
+      .sort((left, right) => {
+        if (left.status !== right.status) {
+          return left.status === 'pending' ? -1 : 1;
         }
 
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime();
       });
   }, [tasks, plant]);
 
   const plantActivities = useMemo(() => {
-    if (!plant || !user) return [];
+    if (!plant || !user) {
+      return [];
+    }
 
-    return activityService.generateActivities(notes, tasks, [plant], spaces, { plantId: plant.id, limit: 50 });
+    return activityService.generateActivities(notes, tasks, [plant], spaces, {
+      plantId: plant.id,
+      limit: 50,
+    });
   }, [plant, user, notes, tasks, spaces]);
 
   const openCreateTaskDialog = () => {
@@ -95,7 +105,9 @@ function PlantDetailPageContent() {
     setShowTaskDialog(true);
   };
 
-  const handleTaskFormSubmit = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleTaskFormSubmit = async (
+    taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
+  ) => {
     try {
       if (editingTask) {
         await updateTask(editingTask.id, taskData);
@@ -116,7 +128,8 @@ function PlantDetailPageContent() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to save task',
+        description:
+          error instanceof Error ? error.message : 'Failed to save task',
         variant: 'destructive',
       });
     }
@@ -156,12 +169,15 @@ function PlantDetailPageContent() {
 
       toast({
         title: 'Success',
-        description: noteData ? 'Task completed and note added successfully' : 'Task completed successfully',
+        description: noteData
+          ? 'Task completed and note added successfully'
+          : 'Task completed successfully',
       });
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to complete task',
+        description:
+          error instanceof Error ? error.message : 'Failed to complete task',
         variant: 'destructive',
       });
     }
@@ -177,7 +193,8 @@ function PlantDetailPageContent() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete task',
+        description:
+          error instanceof Error ? error.message : 'Failed to delete task',
         variant: 'destructive',
       });
     }
@@ -188,7 +205,7 @@ function PlantDetailPageContent() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center p-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
             <p className="text-muted-foreground">Loading plant...</p>
           </div>
         </div>
@@ -200,9 +217,10 @@ function PlantDetailPageContent() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Plant Not Found</h2>
-          <p className="text-muted-foreground mb-4">
-            The plant you're looking for doesn't exist or you don't have access to it.
+          <h2 className="mb-4 text-2xl font-bold">Plant Not Found</h2>
+          <p className="mb-4 text-muted-foreground">
+            The plant you're looking for doesn't exist or you don't have access
+            to it.
           </p>
           <Link to="/plants">
             <Button>
@@ -216,7 +234,7 @@ function PlantDetailPageContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="container mx-auto space-y-8 px-4 py-8">
       <PlantDetails
         plant={plant}
         spaces={spaces}
@@ -224,52 +242,105 @@ function PlantDetailPageContent() {
         onUpdate={() => loadPlants()}
       />
 
-      {/* Tasks for this plant */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            Plant Tasks
-            <Badge variant="outline" className="ml-2 font-normal">
-              {plantTasks.length}
-            </Badge>
-          </h2>
-          <Button onClick={openCreateTaskDialog} size="sm">
-            <CheckSquare className="mr-2 h-4 w-4" />
-            Add Task
-          </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Plant Workspace</h2>
+            <p className="text-sm text-muted-foreground">
+              Keep plant-specific tasks and notes in one focused view.
+            </p>
+          </div>
+
+          <div
+            className="inline-flex gap-2 rounded-lg border bg-background p-1 lg:hidden"
+            data-testid="e2e-plant-detail-section-switcher"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={mobileSection === 'tasks' ? 'default' : 'ghost'}
+              data-testid="e2e-plant-detail-show-tasks"
+              onClick={() => setMobileSection('tasks')}
+            >
+              Tasks
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={mobileSection === 'notes' ? 'default' : 'ghost'}
+              data-testid="e2e-plant-detail-show-notes"
+              onClick={() => setMobileSection('notes')}
+            >
+              Notes
+            </Button>
+          </div>
         </div>
 
-        {tasksLoading && plantTasks.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">Loading tasks...</p>
-            </CardContent>
-          </Card>
-        ) : plantTasks.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="mb-4 text-muted-foreground">No tasks attached to this plant yet.</p>
-              <Button onClick={openCreateTaskDialog}>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section
+            className={`${mobileSection !== 'tasks' ? 'hidden lg:block' : ''} space-y-4`}
+            data-testid="e2e-plant-detail-tasks-pane"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-xl font-semibold">
+                Plant Tasks
+                <Badge variant="outline" className="ml-2 font-normal">
+                  {plantTasks.length}
+                </Badge>
+              </h3>
+              <Button onClick={openCreateTaskDialog} size="sm">
                 <CheckSquare className="mr-2 h-4 w-4" />
-                Create First Plant Task
+                Add Task
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {plantTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                spaces={spaces}
-                plants={plants}
-                onComplete={handleCompleteTask}
-                onEdit={openEditTaskDialog}
-                onDelete={handleDeleteTask}
-              />
-            ))}
-          </div>
-        )}
+            </div>
+
+            {tasksLoading && plantTasks.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-muted-foreground">Loading tasks...</p>
+                </CardContent>
+              </Card>
+            ) : plantTasks.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="mb-4 text-muted-foreground">
+                    No tasks attached to this plant yet.
+                  </p>
+                  <Button onClick={openCreateTaskDialog}>
+                    <CheckSquare className="mr-2 h-4 w-4" />
+                    Create First Plant Task
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {plantTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    spaces={spaces}
+                    plants={plants}
+                    onComplete={handleCompleteTask}
+                    onEdit={openEditTaskDialog}
+                    onDelete={handleDeleteTask}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section
+            className={mobileSection !== 'notes' ? 'hidden lg:block' : ''}
+            data-testid="e2e-plant-detail-notes-pane"
+          >
+            <NoteList
+              plantId={plant.id}
+              title="Plant Notes"
+              showCreateButton={true}
+              showDescription={false}
+            />
+          </section>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -282,7 +353,6 @@ function PlantDetailPageContent() {
         />
       </div>
 
-      {/* Add/Edit Task Dialog */}
       <Dialog
         open={showTaskDialog}
         onOpenChange={(open) => {
@@ -292,9 +362,11 @@ function PlantDetailPageContent() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingTask ? 'Edit Plant Task' : 'Create Plant Task'}</DialogTitle>
+            <DialogTitle>
+              {editingTask ? 'Edit Plant Task' : 'Create Plant Task'}
+            </DialogTitle>
           </DialogHeader>
           <TaskForm
             task={editingTask || undefined}
@@ -314,7 +386,6 @@ function PlantDetailPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Task Completion Dialog */}
       <TaskCompletionDialog
         task={completingTask}
         spaces={spaces}

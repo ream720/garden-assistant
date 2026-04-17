@@ -157,7 +157,7 @@ test.describe('Events Notes', () => {
 
     await page.getByTestId('e2e-events-filters-notes').click();
     await selectOption(page.getByTestId('e2e-events-note-filter-category'), page, 'Issue');
-    await expect(page).toHaveURL(/category=issue/);
+    await expect(page).toHaveURL(/noteCategory=issue/);
     await expect(noteCardByContent(page, content)).toBeVisible({ timeout: 10000 });
 
     await page.getByTestId('e2e-events-clear-filters-notes').click();

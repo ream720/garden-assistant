@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Edit, Move, Calendar, ArrowLeft, StickyNote } from 'lucide-react';
+import { Edit, Move, Calendar, ArrowLeft } from 'lucide-react';
 import { toDate, formatDateSafe } from '../../lib/utils/dateUtils';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import type { Plant, GrowSpace } from '../../lib/types';
-import { NoteList } from '../notes/NoteList';
 import { formatPlantVariety } from '../../lib/utils/plantDisplay';
 
 interface PlantDetailsProps {
@@ -218,23 +217,6 @@ export function PlantDetails({ plant, spaces, onBack, onUpdate }: PlantDetailsPr
           </CardContent>
         </Card>
       )}
-
-      {/* Notes & Observations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <StickyNote className="h-5 w-5" />
-            Notes & Observations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <NoteList 
-            plantId={plant.id}
-            title="Plant Notes"
-            showCreateButton={true}
-          />
-        </CardContent>
-      </Card>
 
       {/* Edit Plant Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

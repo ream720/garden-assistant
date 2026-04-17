@@ -84,4 +84,41 @@ test.describe('Spaces', () => {
       await expect(page).toHaveURL(/\/spaces\/.+/);
     }
   });
+
+  test('space detail shows split task and note panes on desktop', async ({ page }) => {
+    await page.waitForTimeout(3000);
+
+    const spaceCards = page.locator('[class*="card"], [class*="Card"]').filter({
+      has: page.locator('h3, h4, [class*="title"], [class*="Title"]'),
+    });
+
+    if ((await spaceCards.count()) === 0) return;
+
+    await spaceCards.first().click();
+    await expect(page).toHaveURL(/\/spaces\/.+/);
+
+    await expect(page.getByTestId('e2e-space-detail-tasks-pane')).toBeVisible();
+    await expect(page.getByTestId('e2e-space-detail-notes-pane')).toBeVisible();
+  });
+
+  test('space detail mobile switcher toggles between tasks and notes', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(3000);
+
+    const spaceCards = page.locator('[class*="card"], [class*="Card"]').filter({
+      has: page.locator('h3, h4, [class*="title"], [class*="Title"]'),
+    });
+
+    if ((await spaceCards.count()) === 0) return;
+
+    await spaceCards.first().click();
+    await expect(page).toHaveURL(/\/spaces\/.+/);
+
+    await expect(page.getByTestId('e2e-space-detail-section-switcher')).toBeVisible();
+    await page.getByTestId('e2e-space-detail-show-notes').click();
+    await expect(page.getByTestId('e2e-space-detail-notes-pane')).toBeVisible();
+
+    await page.getByTestId('e2e-space-detail-show-tasks').click();
+    await expect(page.getByTestId('e2e-space-detail-tasks-pane')).toBeVisible();
+  });
 });

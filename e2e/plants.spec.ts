@@ -207,6 +207,37 @@ test.describe('Plants', () => {
     await expect(page.getByRole('button', { name: 'Move to Space' })).toBeVisible();
   });
 
+  test('plant detail shows split task and note panes on desktop', async ({ page }) => {
+    await page.waitForTimeout(3000);
+
+    const plantLinks = page.locator('a[href*="/plants/"]');
+    if ((await plantLinks.count()) === 0) return;
+
+    await plantLinks.first().click();
+    await expect(page).toHaveURL(/\/plants\/.+/, { timeout: 10000 });
+
+    await expect(page.getByTestId('e2e-plant-detail-tasks-pane')).toBeVisible();
+    await expect(page.getByTestId('e2e-plant-detail-notes-pane')).toBeVisible();
+  });
+
+  test('plant detail mobile switcher toggles between tasks and notes', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(3000);
+
+    const plantLinks = page.locator('a[href*="/plants/"]');
+    if ((await plantLinks.count()) === 0) return;
+
+    await plantLinks.first().click();
+    await expect(page).toHaveURL(/\/plants\/.+/, { timeout: 10000 });
+
+    await expect(page.getByTestId('e2e-plant-detail-section-switcher')).toBeVisible();
+    await page.getByTestId('e2e-plant-detail-show-notes').click();
+    await expect(page.getByTestId('e2e-plant-detail-notes-pane')).toBeVisible();
+
+    await page.getByTestId('e2e-plant-detail-show-tasks').click();
+    await expect(page.getByTestId('e2e-plant-detail-tasks-pane')).toBeVisible();
+  });
+
   test('can edit a plant from the detail page', async ({ page }) => {
     const addButton = page.getByRole('button', { name: 'Add Plant' });
     await addButton.first().click();

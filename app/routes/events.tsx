@@ -220,6 +220,115 @@ const notesHelperCopy =
 const tasksHelperCopy =
   'Use Filters for smart status views: Issues shows overdue tasks plus high-priority tasks due in the next 24 hours, and Due Soon shows pending tasks due in the next 24 hours.';
 
+const getRecurringFallbackSeriesKey = (task: Task): string => {
+  const recurrence = task.recurrence;
+  if (!recurrence) {
+    return task.id;
+  }
+
+  return [
+    task.userId,
+    task.title.trim().toLowerCase(),
+    task.plantId ?? 'no-plant',
+    task.spaceId ?? 'no-space',
+    recurrence.type,
+    recurrence.interval,
+    recurrence.endDate
+      ? startOfDay(recurrence.endDate).getTime().toString()
+      : 'no-end-date',
+  ].join('|');
+};
+
+const getRecurringSeriesGroupKey = (task: Task): string => {
+  if (!task.recurrence) {
+    return `single:${task.id}`;
+  }
+
+  if (task.recurrenceSeriesId) {
+    return `series:${task.recurrenceSeriesId}`;
+  }
+
+  return `fallback:${getRecurringFallbackSeriesKey(task)}`;
+};
+
+const compareTaskByDueDateAsc = (leftTask: Task, rightTask: Task) => {
+  const dueDateDelta = leftTask.dueDate.getTime() - rightTask.dueDate.getTime();
+  if (dueDateDelta !== 0) {
+    return dueDateDelta;
+  }
+
+  return rightTask.updatedAt.getTime() - leftTask.updatedAt.getTime();
+};
+
+const compareTaskByDueDateDesc = (leftTask: Task, rightTask: Task) => {
+  const dueDateDelta = rightTask.dueDate.getTime() - leftTask.dueDate.getTime();
+  if (dueDateDelta !== 0) {
+    return dueDateDelta;
+  }
+
+  return rightTask.updatedAt.getTime() - leftTask.updatedAt.getTime();
+};
+
+const pickRecurringSeriesRepresentative = (
+  seriesTasks: Task[],
+  statusFilter: TaskStatusFilter
+): Task => {
+  if (seriesTasks.length === 1) {
+    return seriesTasks[0];
+  }
+
+  const pendingTasks = seriesTasks
+    .filter((task) => task.status === 'pending')
+    .sort(compareTaskByDueDateAsc);
+  const completedTasks = seriesTasks
+    .filter((task) => task.status === 'completed')
+    .sort(compareTaskByDueDateDesc);
+  const byDueDateAsc = [...seriesTasks].sort(compareTaskByDueDateAsc);
+  const byDueDateDesc = [...seriesTasks].sort(compareTaskByDueDateDesc);
+
+  if (statusFilter === 'completed') {
+    return completedTasks[0] ?? byDueDateDesc[0];
+  }
+
+  if (
+    statusFilter === 'pending' ||
+    statusFilter === 'issues' ||
+    statusFilter === 'dueSoon' ||
+    statusFilter === 'overdue'
+  ) {
+    return pendingTasks[0] ?? byDueDateAsc[0];
+  }
+
+  return pendingTasks[0] ?? completedTasks[0] ?? byDueDateAsc[0];
+};
+
+const collapseRecurringTasksForDisplay = (
+  taskList: Task[],
+  statusFilter: TaskStatusFilter
+): Task[] => {
+  const standaloneTasks: Task[] = [];
+  const recurringSeriesTasks = new Map<string, Task[]>();
+
+  taskList.forEach((task) => {
+    if (!task.recurrence) {
+      standaloneTasks.push(task);
+      return;
+    }
+
+    const seriesKey = getRecurringSeriesGroupKey(task);
+    const seriesBucket = recurringSeriesTasks.get(seriesKey) ?? [];
+    seriesBucket.push(task);
+    recurringSeriesTasks.set(seriesKey, seriesBucket);
+  });
+
+  const collapsedRecurringTasks = [...recurringSeriesTasks.values()].map(
+    (seriesTasks) =>
+      pickRecurringSeriesRepresentative(seriesTasks, statusFilter)
+  );
+
+  return [...standaloneTasks, ...collapsedRecurringTasks];
+};
+
 const getTaskStatusCopy = (task: Task) => {
   if (task.status === 'completed') {
     return {
@@ -815,9 +924,15 @@ function EventsContent() {
   const effectiveTaskPlantFilter =
     taskContextFilter === 'spaces' ? 'all' : taskPlantFilter;
 
-  const noteCategoryFilter = parseNoteCategoryFilter(searchParams.get('category'));
-  const noteSpaceFilter = parseContextEntityFilter(searchParams.get('spaceId'));
-  const notePlantFilter = parseContextEntityFilter(searchParams.get('plantId'));
+  const noteCategoryFilter = parseNoteCategoryFilter(
+    searchParams.get('noteCategory')
+  );
+  const noteSpaceFilter = parseContextEntityFilter(
+    searchParams.get('noteSpaceId')
+  );
+  const notePlantFilter = parseContextEntityFilter(
+    searchParams.get('notePlantId')
+  );
   const noteContextFilter = parseNoteContextFilter(
     searchParams.get('noteContext'),
     noteSpaceFilter,
@@ -986,8 +1101,8 @@ function EventsContent() {
     if (nextContext === 'plants') {
       updateSearchParams({
         noteContext: 'plants',
-        spaceId: null,
-        plantId: notePlantFilter === 'none' ? null : notePlantFilter,
+        noteSpaceId: null,
+        notePlantId: notePlantFilter === 'none' ? null : notePlantFilter,
       });
       return;
     }
@@ -995,16 +1110,16 @@ function EventsContent() {
     if (nextContext === 'spaces') {
       updateSearchParams({
         noteContext: 'spaces',
-        plantId: null,
-        spaceId: noteSpaceFilter === 'none' ? null : noteSpaceFilter,
+        notePlantId: null,
+        noteSpaceId: noteSpaceFilter === 'none' ? null : noteSpaceFilter,
       });
       return;
     }
 
     updateSearchParams({
       noteContext: 'all',
-      spaceId: null,
-      plantId: null,
+      noteSpaceId: null,
+      notePlantId: null,
     });
   };
 
@@ -1012,16 +1127,16 @@ function EventsContent() {
     if (nextScope === 'unlinked') {
       updateSearchParams({
         noteContext: 'all',
-        spaceId: 'none',
-        plantId: 'none',
+        noteSpaceId: 'none',
+        notePlantId: 'none',
       });
       return;
     }
 
     updateSearchParams({
       noteContext: 'all',
-      spaceId: null,
-      plantId: null,
+      noteSpaceId: null,
+      notePlantId: null,
     });
   };
 
@@ -1085,6 +1200,7 @@ function EventsContent() {
       );
     }
 
+    filtered = collapseRecurringTasksForDisplay(filtered, taskStatusFilter);
     filtered.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 
     return filtered;
@@ -1099,14 +1215,15 @@ function EventsContent() {
     taskSearchQuery,
   ]);
 
-  const taskContextCounts = useMemo(
-    () => ({
-      all: tasks.length,
-      plants: tasks.filter((task) => Boolean(task.plantId)).length,
-      spaces: tasks.filter((task) => Boolean(task.spaceId)).length,
-    }),
-    [tasks]
-  );
+  const taskContextCounts = useMemo(() => {
+    const collapsedTasks = collapseRecurringTasksForDisplay(tasks, 'all');
+
+    return {
+      all: collapsedTasks.length,
+      plants: collapsedTasks.filter((task) => Boolean(task.plantId)).length,
+      spaces: collapsedTasks.filter((task) => Boolean(task.spaceId)).length,
+    };
+  }, [tasks]);
 
   const taskStatusCounts = useMemo(() => {
     let filtered = [...tasks];
@@ -1135,16 +1252,19 @@ function EventsContent() {
       filtered = filtered.filter((task) => task.plantId === effectiveTaskPlantFilter);
     }
 
+    const collapsed = collapseRecurringTasksForDisplay(filtered, 'all');
     const referenceDate = new Date();
 
     return {
-      all: filtered.length,
-      pending: filtered.filter((task) => task.status === 'pending').length,
-      completed: filtered.filter((task) => task.status === 'completed').length,
-      issues: filtered.filter((task) => isTaskNeedsAttention(task, referenceDate))
+      all: collapsed.length,
+      pending: collapsed.filter((task) => task.status === 'pending').length,
+      completed: collapsed.filter((task) => task.status === 'completed').length,
+      issues: collapsed.filter((task) => isTaskNeedsAttention(task, referenceDate))
         .length,
-      dueSoon: filtered.filter((task) => isTaskDueSoon(task, referenceDate)).length,
-      overdue: filtered.filter((task) => isTaskOverdue(task, referenceDate)).length,
+      dueSoon: collapsed.filter((task) => isTaskDueSoon(task, referenceDate))
+        .length,
+      overdue: collapsed.filter((task) => isTaskOverdue(task, referenceDate))
+        .length,
     };
   }, [
     tasks,
@@ -2078,10 +2198,6 @@ function EventsContent() {
                   taskSpaceId: null,
                   taskPlantId: null,
                   taskGroupBy: null,
-                  tab: null,
-                  taskTab: null,
-                  priority: null,
-                  groupBy: null,
                 });
               }}
             >
@@ -2136,7 +2252,7 @@ function EventsContent() {
       activeFilterChips.push({
         key: 'category',
         label: getNoteCategoryLabel(noteCategoryFilter),
-        onRemove: () => updateSearchParams({ category: null }),
+        onRemove: () => updateSearchParams({ noteCategory: null }),
       });
     }
 
@@ -2148,7 +2264,7 @@ function EventsContent() {
       activeFilterChips.push({
         key: 'plant',
         label: plantLabel,
-        onRemove: () => updateSearchParams({ plantId: null }),
+        onRemove: () => updateSearchParams({ notePlantId: null }),
       });
     }
 
@@ -2160,7 +2276,7 @@ function EventsContent() {
       activeFilterChips.push({
         key: 'space',
         label: spaceLabel,
-        onRemove: () => updateSearchParams({ spaceId: null }),
+        onRemove: () => updateSearchParams({ noteSpaceId: null }),
       });
     }
 
@@ -2275,7 +2391,9 @@ function EventsContent() {
                 </p>
                 <Select
                   value={noteCategoryFilter}
-                  onValueChange={(value) => updateSearchParams({ category: value })}
+                  onValueChange={(value) =>
+                    updateSearchParams({ noteCategory: value })
+                  }
                 >
                   <SelectTrigger
                     className="h-9 border-slate-700 bg-[#0f172a] text-slate-200"
@@ -2301,7 +2419,9 @@ function EventsContent() {
                   </p>
                   <Select
                     value={effectiveNotePlantFilter}
-                    onValueChange={(value) => updateSearchParams({ plantId: value })}
+                    onValueChange={(value) =>
+                      updateSearchParams({ notePlantId: value })
+                    }
                   >
                     <SelectTrigger className="h-9 border-slate-700 bg-[#0f172a] text-slate-200">
                       <SelectValue placeholder="All plants" />
@@ -2325,7 +2445,9 @@ function EventsContent() {
                   </p>
                   <Select
                     value={effectiveNoteSpaceFilter}
-                    onValueChange={(value) => updateSearchParams({ spaceId: value })}
+                    onValueChange={(value) =>
+                      updateSearchParams({ noteSpaceId: value })
+                    }
                   >
                     <SelectTrigger className="h-9 border-slate-700 bg-[#0f172a] text-slate-200">
                       <SelectValue placeholder="All spaces" />
@@ -2353,9 +2475,9 @@ function EventsContent() {
                 setNoteSearchQuery('');
                 updateSearchParams({
                   noteContext: null,
-                  category: null,
-                  spaceId: null,
-                  plantId: null,
+                  noteCategory: null,
+                  noteSpaceId: null,
+                  notePlantId: null,
                 });
               }}
             >

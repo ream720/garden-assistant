@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Settings, StickyNote, Plus, Sprout, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Settings, Plus, Sprout, CheckSquare } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -8,7 +8,6 @@ import { PlantList } from '../components/plants';
 import { PlantForm } from '../components/plants/PlantForm';
 import { SpaceForm } from '../components/spaces/SpaceForm';
 import { NoteList } from '../components/notes/NoteList';
-import { NoteForm } from '../components/notes/NoteForm';
 import { TaskForm } from '../components/tasks/TaskForm';
 import { TaskCard } from '../components/tasks/TaskCard';
 import { TaskCompletionDialog } from '../components/tasks/TaskCompletionDialog';
@@ -53,11 +52,12 @@ function SpaceDetailContent() {
   const { spaceId } = useParams();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showAddPlantDialog, setShowAddPlantDialog] = useState(false);
-  const [showAddNoteDialog, setShowAddNoteDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [completingTask, setCompletingTask] = useState<Task | null>(null);
-  const [isCreatingNote, setIsCreatingNote] = useState(false);
+  const [mobileSection, setMobileSection] = useState<'tasks' | 'notes'>(
+    'tasks'
+  );
 
   const { toast } = useToast();
   const { user } = useAuthStore();
@@ -106,46 +106,6 @@ function SpaceDetailContent() {
       setShowEditDialog(false);
     } catch (error) {
       console.error('Failed to update space:', error);
-    }
-  };
-
-  const handleCreateNoteInSpace = async (data: {
-    content: string;
-    category: NoteCategory;
-    plantId?: string;
-    spaceId?: string;
-    timestamp?: Date;
-    photos: File[];
-  }) => {
-    if (!user) return;
-
-    setIsCreatingNote(true);
-    try {
-      await createNote(
-        {
-          content: data.content,
-          category: data.category,
-          plantId: data.plantId,
-          spaceId: data.spaceId,
-          timestamp: data.timestamp,
-          photos: data.photos,
-        },
-        user.uid
-      );
-
-      setShowAddNoteDialog(false);
-      toast({
-        title: 'Success',
-        description: 'Note created successfully',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create note',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsCreatingNote(false);
     }
   };
 
@@ -332,14 +292,6 @@ function SpaceDetailContent() {
                   <Sprout className="mr-2 h-4 w-4" />
                   Add Plant
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={openCreateTaskDialog}>
-                  <CheckSquare className="mr-2 h-4 w-4" />
-                  Add Task
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setShowAddNoteDialog(true)}>
-                  <StickyNote className="mr-2 h-4 w-4" />
-                  Add Note
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -432,51 +384,102 @@ function SpaceDetailContent() {
       )}
 
       {/* Tasks in this space */}
-      <div className="mb-10">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-xl font-semibold">
-            Tasks in this Space
-            <Badge variant="outline" className="ml-2 font-normal">
-              {spaceTasks.length}
-            </Badge>
-          </h2>
-          <Button onClick={openCreateTaskDialog} size="sm">
-            <CheckSquare className="mr-2 h-4 w-4" />
-            Add Task
-          </Button>
+      <div className="mb-10 space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Space Workspace</h2>
+            <p className="text-sm text-muted-foreground">
+              Track space-level work and contextual notes side by side.
+            </p>
+          </div>
+          <div
+            className="inline-flex gap-2 rounded-lg border bg-background p-1 lg:hidden"
+            data-testid="e2e-space-detail-section-switcher"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={mobileSection === 'tasks' ? 'default' : 'ghost'}
+              data-testid="e2e-space-detail-show-tasks"
+              onClick={() => setMobileSection('tasks')}
+            >
+              Tasks
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={mobileSection === 'notes' ? 'default' : 'ghost'}
+              data-testid="e2e-space-detail-show-notes"
+              onClick={() => setMobileSection('notes')}
+            >
+              Notes
+            </Button>
+          </div>
         </div>
 
-        {tasksLoading && spaceTasks.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">Loading tasks...</p>
-            </CardContent>
-          </Card>
-        ) : spaceTasks.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="mb-4 text-muted-foreground">No tasks attached to this space yet.</p>
-              <Button onClick={openCreateTaskDialog}>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section
+            className={`${mobileSection !== 'tasks' ? 'hidden lg:block' : ''} space-y-4`}
+            data-testid="e2e-space-detail-tasks-pane"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-xl font-semibold">
+                Tasks in this Space
+                <Badge variant="outline" className="ml-2 font-normal">
+                  {spaceTasks.length}
+                </Badge>
+              </h3>
+              <Button onClick={openCreateTaskDialog} size="sm">
                 <CheckSquare className="mr-2 h-4 w-4" />
-                Create First Space Task
+                Add Task
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {spaceTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                spaces={spaces}
-                plants={plants}
-                onComplete={handleCompleteTask}
-                onEdit={openEditTaskDialog}
-                onDelete={handleDeleteTask}
-              />
-            ))}
-          </div>
-        )}
+            </div>
+
+            {tasksLoading && spaceTasks.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-muted-foreground">Loading tasks...</p>
+                </CardContent>
+              </Card>
+            ) : spaceTasks.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="mb-4 text-muted-foreground">No tasks attached to this space yet.</p>
+                  <Button onClick={openCreateTaskDialog}>
+                    <CheckSquare className="mr-2 h-4 w-4" />
+                    Create First Space Task
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {spaceTasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    spaces={spaces}
+                    plants={plants}
+                    onComplete={handleCompleteTask}
+                    onEdit={openEditTaskDialog}
+                    onDelete={handleDeleteTask}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section
+            className={mobileSection !== 'notes' ? 'hidden lg:block' : ''}
+            data-testid="e2e-space-detail-notes-pane"
+          >
+            <NoteList
+              spaceId={space.id}
+              title="Space Notes and Observations"
+              showCreateButton={true}
+              showDescription={false}
+            />
+          </section>
+        </div>
       </div>
 
       {/* Plants in this space */}
@@ -488,15 +491,6 @@ function SpaceDetailContent() {
           </Badge>
         </h2>
         <PlantList spaceId={space.id} spaces={spaces} showAddButton={false} />
-      </div>
-
-      {/* Notes and Observations */}
-      <div className="mb-8">
-        <NoteList
-          spaceId={space.id}
-          title="Space Notes and Observations"
-          showCreateButton={false}
-        />
       </div>
 
       {/* Add/Edit Task Dialog */}
@@ -558,21 +552,6 @@ function SpaceDetailContent() {
               loadPlants(space.id);
             }}
             onCancel={() => setShowAddPlantDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Note Dialog */}
-      <Dialog open={showAddNoteDialog} onOpenChange={setShowAddNoteDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add Note</DialogTitle>
-          </DialogHeader>
-          <NoteForm
-            onSubmit={handleCreateNoteInSpace}
-            onCancel={() => setShowAddNoteDialog(false)}
-            initialSpaceId={space.id}
-            loading={isCreatingNote}
           />
         </DialogContent>
       </Dialog>
